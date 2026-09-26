@@ -1,0 +1,40 @@
+# ── Entornos virtuales ────────────────────────────────────────────────────────
+.venv/
+venv/
+env/
+
+# ── Variables de entorno ──────────────────────────────────────────────────────
+.env
+*.env
+!.env.example
+
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+dist/
+build/
+*.egg-info/
+.eggs/
+
+# ── Pytest / cobertura ────────────────────────────────────────────────────────
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+
+# ── Mypy ──────────────────────────────────────────────────────────────────────
+.mypy_cache/
+
+# ── Ruff ──────────────────────────────────────────────────────────────────────
+.ruff_cache/
+
+# ── Excel de salida (resultados generados) ────────────────────────────────────
+**/resultado*.xlsx
+**/output*.xlsx
+**/sentimentAnalysis.xlsx
+
+# ── OS ────────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
