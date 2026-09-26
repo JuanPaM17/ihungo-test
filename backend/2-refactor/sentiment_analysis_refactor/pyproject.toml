@@ -1,0 +1,62 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sentiment-analysis"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "openpyxl>=3.1",
+    "paralleldots>=3.2",
+    "tenacity>=8.2",
+]
+
+[project.scripts]
+sentiment-analysis = "sentiment_analysis.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+# ---------------------------------------------------------------------------
+# pytest
+# ---------------------------------------------------------------------------
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "--tb=short"
+
+# ---------------------------------------------------------------------------
+# coverage
+# ---------------------------------------------------------------------------
+[tool.coverage.run]
+source = ["sentiment_analysis"]
+omit = ["tests/*"]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
+
+# ---------------------------------------------------------------------------
+# ruff
+# ---------------------------------------------------------------------------
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = []
+
+# ---------------------------------------------------------------------------
+# mypy
+# ---------------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.11"
+strict = true
+mypy_path = "src"
+exclude = ["tests/"]
+
+[[tool.mypy.overrides]]
+module = ["paralleldots", "openpyxl.*"]
+ignore_missing_imports = true
