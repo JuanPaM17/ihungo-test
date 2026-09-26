@@ -1,0 +1,19 @@
+{
+  "name": "bouncy",
+  "version": "1.0.0",
+  "description": "Bouncy numbers implementation in TypeScript",
+  "main": "dist/bouncy.js",
+  "types": "dist/bouncy.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "cli": "npx ts-node src/bouncy.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.0",
+    "vitest": "^1.6.0"
+  }
+}
