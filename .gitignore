@@ -13,8 +13,6 @@ __pycache__/
 *.py[cod]
 *.pyo
 *.pyd
-dist/
-build/
 *.egg-info/
 .eggs/
 
@@ -29,6 +27,23 @@ coverage.xml
 
 # ── Ruff ──────────────────────────────────────────────────────────────────────
 .ruff_cache/
+
+# ── Node.js ───────────────────────────────────────────────────────────────────
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.npm/
+.yarn/
+
+# ── TypeScript build ──────────────────────────────────────────────────────────
+dist/
+build/
+*.tsbuildinfo
+
+# ── Vitest / Jest ─────────────────────────────────────────────────────────────
+coverage/
 
 # ── Excel de salida (resultados generados) ────────────────────────────────────
 **/resultado*.xlsx

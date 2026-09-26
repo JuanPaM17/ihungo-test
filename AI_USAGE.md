@@ -54,7 +54,33 @@ Se utilizó ChatGPT para revisar los requisitos del reto, identificar malas prá
 - Se decidió utilizar dobles de prueba para validar el procesamiento sin requerir API key ni conexión a internet.
 - Se verificó que la refactorización conservara el comportamiento funcional del script original, pero eliminando valores fijos, esperas constantes y dependencias directas.
 
-### Backend 3
+### Backend 3 — Algoritmia: números bouncy
+
+#### Herramientas utilizadas
+- Claude
+- ChatGPT
+
+#### Uso de IA
+Se utilizó Claude como apoyo para estructurar el desarrollo del reto con enfoque TDD, incluyendo:
+
+- definición inicial de casos de prueba para números increasing, decreasing y bouncy;
+- validación de los casos obligatorios `50% -> 538` y `90% -> 21780`;
+- organización de las implementaciones independientes en Python y TypeScript;
+- creación de las funciones equivalentes en ambos lenguajes;
+- preparación de las interfaces CLI;
+- revisión de casos inválidos para porcentajes fuera del rango permitido;
+- apoyo en la configuración de `pytest` y `vitest` o `jest`.
+
+Se utilizó ChatGPT para revisar los requisitos del reto, definir una estrategia de commits que evidenciara TDD y validar que la comparación de la proporción se realizara con aritmética entera en lugar de punto flotante.
+
+#### Decisiones y validaciones propias
+- Se decidió escribir y versionar primero las pruebas antes de implementar el algoritmo, para que el enfoque TDD quedara visible en el historial de Git.
+- Se mantuvieron implementaciones independientes en Python y TypeScript, evitando compartir lógica entre ambos lenguajes.
+- Se utilizó aritmética entera para comparar la proporción de números bouncy y evitar errores de precisión.
+- Se revisaron manualmente los casos `50% -> 538` y `90% -> 21780` antes de usar el resultado de `99%`.
+- Se decidió mantener una solución iterativa simple y legible, evitando optimizaciones prematuras.
+- Se midió el tiempo de ejecución de cada implementación para documentarlo posteriormente en el `README.md`.
+
 ### Backend 4
 
 ## DevOps
