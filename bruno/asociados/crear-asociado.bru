@@ -1,0 +1,21 @@
+meta {
+  name: Crear asociado
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{base_url}}/api/asociados/
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{access_token}}
+}
+
+body:json {
+  {
+    "user": 1
+  }
+}

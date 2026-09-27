@@ -1,0 +1,22 @@
+meta {
+  name: Actualizar actividad (PATCH)
+  type: http
+  seq: 3
+}
+
+patch {
+  url: {{base_url}}/api/actividades/1/
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{access_token}}
+}
+
+body:json {
+  {
+    "description": "Descripción actualizada",
+    "end_datetime": "2027-06-01T12:00:00Z"
+  }
+}

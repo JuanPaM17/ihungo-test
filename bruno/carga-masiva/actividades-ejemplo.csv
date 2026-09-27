@@ -1,0 +1,3 @@
+tipo_actividad,descripcion,fecha_inicio,fecha_fin,asociado_email
+workshop,Taller de Python,2027-06-01T09:00:00Z,2027-06-01T11:00:00Z,juan@example.com
+seminar,Seminario de Django,2027-07-01T14:00:00Z,2027-07-01T16:00:00Z,maria@example.com

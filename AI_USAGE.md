@@ -81,7 +81,67 @@ Se utilizó ChatGPT para revisar los requisitos del reto, definir una estrategia
 - Se decidió mantener una solución iterativa simple y legible, evitando optimizaciones prematuras.
 - Se midió el tiempo de ejecución de cada implementación para documentarlo posteriormente en el `README.md`.
 
-### Backend 4
+### Backend 4 — API REST de asignación de actividades
+
+#### Herramientas utilizadas
+- Claude
+- ChatGPT
+
+#### Uso de IA
+Se utilizó Claude como apoyo para construir el reto de forma incremental, dividiendo la implementación en fases pequeñas y verificables.
+
+El apoyo de Claude se utilizó principalmente en:
+
+- creación de la estructura base del proyecto con Django REST Framework;
+- configuración de PostgreSQL y Docker Compose;
+- implementación del endpoint de salud;
+- creación del usuario personalizado con autenticación por correo;
+- integración de JWT con access y refresh token;
+- definición de los modelos de dominio;
+- implementación del CRUD de asociados y actividades;
+- creación de filtros por rango de fechas;
+- separación de lógica de negocio, serializers, permisos y servicios;
+- implementación de reglas de fechas y detección de solapamientos;
+- implementación de permisos para administradores y asociados;
+- creación del flujo de solicitud pública de registro;
+- aprobación y rechazo de solicitudes desde Django Admin;
+- implementación de carga masiva de asociados y actividades mediante CSV y Excel;
+- validación fila por fila sin abortar registros válidos;
+- configuración de OpenAPI con `drf-spectacular`;
+- configuración de Gunicorn y Nginx;
+- configuración de archivos estáticos y variables de entorno;
+- creación y ajuste del pipeline de GitLab CI;
+- apoyo en la creación de pruebas automatizadas y verificación de cobertura.
+
+Se utilizó ChatGPT para:
+
+- revisar los requisitos del enunciado y dividir el reto en fases de implementación;
+- definir el orden de trabajo para evitar implementar toda la solución de una sola vez;
+- proponer una estrategia de commits pequeños y descriptivos;
+- definir qué funcionalidades debían probarse antes de continuar con la siguiente fase;
+- revisar las reglas de negocio y permisos obligatorios;
+- validar que la arquitectura propuesta cubriera los requisitos de separación por capas y principios SOLID;
+- preparar una lista final de verificación contra el contrato mínimo de la API;
+- revisar que el proyecto pudiera ejecutarse de forma reproducible mediante Docker.
+
+#### Decisiones y validaciones propias
+- Se eligió Django REST Framework por su integración con Django Admin, ORM, migraciones, autenticación y permisos.
+- Se decidió implementar el reto por fases para poder probar cada bloque antes de continuar con el siguiente.
+- Se utilizó un modelo de usuario personalizado con `email` como identificador principal.
+- Se verificó manualmente el flujo de autenticación JWT comprobando la generación de tokens `access` y `refresh`.
+- Se decidió asignar automáticamente el creador de una actividad desde `request.user` y no confiar en un valor enviado por el cliente.
+- Se mantuvo la lógica de negocio fuera de los endpoints, usando servicios y permisos para reducir el acoplamiento.
+- Se aplicó la regla de solapamiento mediante comparación de rangos de fechas y se excluyó la propia actividad durante actualizaciones.
+- Se decidió que una actividad que termina exactamente cuando otra comienza no se considera solapada.
+- Se mantuvieron las actividades pasadas como solo lectura para asociados.
+- Se aplicó visibilidad de actividades según creador o relación con el asociado.
+- Se decidió que las cargas masivas debían reutilizar las mismas reglas de negocio de la API normal, evitando duplicar validaciones.
+- Se decidió identificar asociados en cargas masivas mediante datos funcionales como correo o identificación, evitando depender de ids internos.
+- Se mantuvo el endpoint de registro como público y las solicitudes en estado pendiente hasta ser procesadas por un administrador.
+- Se decidió usar Nginx como reverse proxy y Gunicorn como servidor de aplicación para la configuración de producción.
+- Se revisó que los secretos y configuraciones sensibles se manejaran mediante variables de entorno y que `.env` no se versionara.
+- Se configuró el pipeline de GitLab para validar lint, pruebas, cobertura y build.
+- Se revisó el proyecto al final contra los endpoints, reglas de negocio, permisos, carga masiva, OpenAPI, Docker, CI y documentación requeridos por el reto.
 
 ## DevOps
 ### DevOps 1
