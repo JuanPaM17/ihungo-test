@@ -1,0 +1,19 @@
+# Entorno virtual
+.venv/
+venv/
+
+# Variables de entorno
+.env
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Django
+staticfiles/
+*.sqlite3
+
+# Docker
+postgres_data/
