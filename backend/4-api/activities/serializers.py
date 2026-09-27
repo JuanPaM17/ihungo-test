@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from activities.models import Activity
+from activities.services import ActivityValidationError, create_activity, update_activity
 from users.serializers import AsociadoSerializer, UserSerializer
 
 
@@ -37,5 +38,13 @@ class ActivityWriteSerializer(serializers.ModelSerializer):
         read_only_fields = ("id",)
 
     def create(self, validated_data: dict) -> Activity:
-        creator = self.context["request"].user
-        return Activity.objects.create(creator=creator, **validated_data)
+        try:
+            return create_activity(validated_data, creator=self.context["request"].user)
+        except ActivityValidationError:
+            raise
+
+    def update(self, instance: Activity, validated_data: dict) -> Activity:
+        try:
+            return update_activity(instance, validated_data)
+        except ActivityValidationError:
+            raise
