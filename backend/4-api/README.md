@@ -52,6 +52,30 @@ docker compose exec web python manage.py test users activities registrations
 
 ---
 
+## Endpoints disponibles
+
+| Método | Endpoint | Descripción |
+|---|---|---|
+| GET | `/api/health/` | Healthcheck |
+| POST | `/api/auth/token/` | Obtener JWT |
+| POST | `/api/auth/token/refresh/` | Refrescar JWT |
+| GET | `/api/asociados/` | Listar asociados |
+| POST | `/api/asociados/` | Crear asociado |
+| GET | `/api/actividades/` | Listar actividades |
+| POST | `/api/actividades/` | Crear actividad |
+| PATCH | `/api/actividades/{id}/` | Actualizar actividad |
+| DELETE | `/api/actividades/{id}/` | Eliminar actividad |
+
+### Filtros de actividades
+
+```
+GET /api/actividades/?desde=2026-10-01
+GET /api/actividades/?hasta=2026-10-31
+GET /api/actividades/?desde=2026-10-01&hasta=2026-10-31
+```
+
+---
+
 ## Django Admin
 
 ```
