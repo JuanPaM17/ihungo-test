@@ -1,10 +1,10 @@
 from django.utils import timezone
-from rest_framework.permissions import BasePermission, IsAuthenticated
+from rest_framework.permissions import BasePermission
 from rest_framework.request import Request
 from rest_framework.views import APIView
 
 from activities.models import Activity
-from users.models import Asociado, User
+from users.models import User
 
 
 class IsAdmin(BasePermission):

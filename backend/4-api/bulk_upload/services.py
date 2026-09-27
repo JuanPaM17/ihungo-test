@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
 from django.utils.crypto import get_random_string
 
-from activities.services import ActivityValidationError, validate_date_range, validate_no_overlap
 from activities.models import Activity
+from activities.services import ActivityValidationError, validate_date_range, validate_no_overlap
 from users.models import Asociado, User
-
 
 ASSOCIATE_REQUIRED = {"identificacion", "nombre", "apellidos", "email", "ciudad"}
 ACTIVITY_REQUIRED = {"tipo_actividad", "descripcion", "fecha_inicio", "fecha_fin", "asociado_email"}
@@ -54,7 +53,9 @@ def bulk_upload_asociados(rows, fieldnames: list[str]) -> dict:
         # Duplicate identification
         if User.objects.filter(identification=identificacion).exists():
             failed += 1
-            errors.append({"row": idx, "code": "DUPLICATE_IDENTIFICATION", "detail": f"Identificación duplicada: {identificacion}"})
+            errors.append(
+                {"row": idx, "code": "DUPLICATE_IDENTIFICATION", "detail": f"Duplicada: {identificacion}"}
+            )
             continue
 
         user = User.objects.create_user(
@@ -108,7 +109,9 @@ def bulk_upload_actividades(rows, fieldnames: list[str], creator) -> dict:
             asociado = user.asociado_profile
         except (User.DoesNotExist, Asociado.DoesNotExist):
             failed += 1
-            errors.append({"row": idx, "code": "ASOCIADO_NOT_FOUND", "detail": f"Asociado no encontrado: {asociado_email}"})
+            errors.append(
+                {"row": idx, "code": "ASOCIADO_NOT_FOUND", "detail": f"Asociado no encontrado: {asociado_email}"}
+            )
             continue
 
         # Parse dates

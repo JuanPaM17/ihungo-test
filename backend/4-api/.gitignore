@@ -17,3 +17,11 @@ staticfiles/
 
 # Docker
 postgres_data/
+
+# Coverage
+.coverage
+coverage.xml
+htmlcov/
+
+# Pytest
+.pytest_cache/

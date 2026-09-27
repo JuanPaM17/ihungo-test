@@ -1,11 +1,9 @@
 from django.test import TestCase
-from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APIClient
 
 from registrations.models import RegistrationRequest
 from users.models import Asociado, User
-
 
 REGISTRO_URL = "/api/registro/"
 
@@ -120,7 +118,7 @@ class RegistrationApprovalServiceTest(TestCase):
 
     def test_cannot_approve_already_approved_request(self) -> None:
         # Caso 11: no se puede aprobar dos veces
-        from registrations.services import approve_request, RegistrationServiceError
+        from registrations.services import RegistrationServiceError, approve_request
         approve_request(self.pending)
         self.pending.refresh_from_db()
         with self.assertRaises(RegistrationServiceError):
@@ -128,7 +126,7 @@ class RegistrationApprovalServiceTest(TestCase):
 
     def test_cannot_approve_rejected_request(self) -> None:
         # Caso 12: no se puede aprobar una rechazada
-        from registrations.services import approve_request, RegistrationServiceError
+        from registrations.services import RegistrationServiceError, approve_request
         self.pending.status = RegistrationRequest.Status.REJECTED
         self.pending.save()
         with self.assertRaises(RegistrationServiceError):

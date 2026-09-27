@@ -21,13 +21,13 @@ class RegistrationRequestView(APIView):
 
         if User.objects.filter(email=email).exists():
             return Response(
-                {"error": {"code": "USER_ALREADY_EXISTS", "message": "Ya existe un usuario registrado con este correo."}},
+                {"error": {"code": "USER_ALREADY_EXISTS", "message": "Ya existe un usuario con este correo."}},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         if RegistrationRequest.objects.filter(email=email, status=RegistrationRequest.Status.PENDING).exists():
             return Response(
-                {"error": {"code": "REGISTRATION_ALREADY_PENDING", "message": "Ya existe una solicitud de registro pendiente para este correo."}},
+                {"error": {"code": "REGISTRATION_ALREADY_PENDING", "message": "Ya existe una solicitud pendiente."}},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 

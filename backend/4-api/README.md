@@ -176,3 +176,67 @@ curl -X POST http://localhost:8000/api/auth/token/refresh/ -H "Content-Type: app
 ```powershell
 Invoke-RestMethod -Method Post -Uri http://localhost:8000/api/auth/token/refresh/ -ContentType "application/json" -Body '{"refresh":"el_refresh_token_aqui"}'
 ```
+
+---
+
+## CI/CD
+
+El pipeline de GitLab CI se define en `.gitlab-ci.yml` en la raíz del repositorio y se ejecuta en cada push a cualquier rama.
+
+### Etapas
+
+| Etapa | Job | Qué valida |
+|---|---|---|
+| `lint` | `lint` | `ruff check .` — estilo e imports |
+| `test` | `test` | Migraciones, pytest, cobertura ≥ 80% |
+| `build` | `build` | `docker build` de la imagen del backend |
+
+### lint
+
+Ejecuta `ruff check .` con la configuración de `pyproject.toml`. Falla si hay errores de estilo, imports no usados o imports desordenados.
+
+Para reproducir localmente:
+
+```bash
+docker compose exec web ruff check .
+```
+
+### Migraciones
+
+Antes de los tests el pipeline verifica que no haya migraciones sin versionar:
+
+```bash
+python manage.py makemigrations --check --dry-run
+```
+
+Si alguien modifica un modelo sin generar la migración, este paso falla.
+
+### Tests y cobertura
+
+Ejecuta `pytest` con cobertura mínima del 80%. La cobertura actual es ~91%.
+
+Para reproducir localmente:
+
+```bash
+docker compose exec web pytest --cov=. --cov-report=term-missing --cov-fail-under=80
+```
+
+Falla si: algún test falla, o la cobertura total cae por debajo del 80%.
+
+### Docker build
+
+Valida que la imagen puede construirse correctamente:
+
+```bash
+docker build -t ihungo-backend:ci .
+```
+
+No publica imágenes en ningún registry.
+
+### Variables de CI
+
+Todas las variables usadas en el pipeline son exclusivas de CI y no contienen secretos reales. Si en el futuro se necesita publicar imágenes, agregar estas variables en **GitLab → Settings → CI/CD → Variables**:
+
+- `CI_REGISTRY_USER`
+- `CI_REGISTRY_PASSWORD`
+- `CI_REGISTRY_IMAGE`

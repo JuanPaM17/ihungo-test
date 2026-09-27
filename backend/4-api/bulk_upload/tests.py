@@ -122,7 +122,8 @@ class BulkUploadAsociadosTest(TestCase):
     def test_invalid_row_does_not_block_valid_rows(self) -> None:
         # Caso 4
         rows = [
-            {"identificacion": "333", "nombre": "Valid", "apellidos": "User", "email": "valid@example.com", "ciudad": "Z"},
+            {"identificacion": "333", "nombre": "Valid", "apellidos": "User",
+             "email": "valid@example.com", "ciudad": "Z"},
             {"identificacion": "444", "nombre": "", "apellidos": "User", "email": "invalid-email", "ciudad": "Z"},
         ]
         f = csv_file(rows, ASSOCIATE_FIELDS)

@@ -5,10 +5,9 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from users.models import User
-
 from bulk_upload.parsers import parse_file
-from bulk_upload.services import bulk_upload_asociados, bulk_upload_actividades
+from bulk_upload.services import bulk_upload_actividades, bulk_upload_asociados
+from users.models import User
 
 
 class IsAdmin(IsAuthenticated):

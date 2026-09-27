@@ -1,0 +1,74 @@
+stages:
+  - lint
+  - test
+  - build
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+
+cache:
+  paths:
+    - .cache/pip
+
+# ---------------------------------------------------------------------------
+# Lint
+# ---------------------------------------------------------------------------
+
+lint:
+  stage: lint
+  image: python:3.12-slim
+  before_script:
+    - cd backend/4-api
+    - pip install --quiet ruff
+  script:
+    - ruff check .
+
+# ---------------------------------------------------------------------------
+# Test
+# ---------------------------------------------------------------------------
+
+test:
+  stage: test
+  image: python:3.12-slim
+  services:
+    - name: postgres:16-alpine
+      alias: db
+  variables:
+    DJANGO_SECRET_KEY: "ci-secret-key-not-used-in-production"
+    DJANGO_DEBUG: "True"
+    DJANGO_ALLOWED_HOSTS: "localhost,127.0.0.1"
+    POSTGRES_DB: ci_db
+    POSTGRES_USER: ci_user
+    POSTGRES_PASSWORD: ci_password
+    POSTGRES_HOST: db
+    POSTGRES_PORT: "5432"
+  before_script:
+    - cd backend/4-api
+    - pip install --quiet -r requirements.txt
+    - python manage.py makemigrations --check --dry-run
+    - python manage.py migrate --noinput
+  script:
+    - pytest --cov=. --cov-report=term-missing --cov-report=xml --cov-fail-under=80
+  artifacts:
+    when: always
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: backend/4-api/coverage.xml
+    expire_in: 7 days
+
+# ---------------------------------------------------------------------------
+# Build
+# ---------------------------------------------------------------------------
+
+build:
+  stage: build
+  image: docker:27
+  services:
+    - docker:27-dind
+  variables:
+    DOCKER_TLS_CERTDIR: "/certs"
+  before_script:
+    - cd backend/4-api
+  script:
+    - docker build -t ihungo-backend:ci .

@@ -1,7 +1,5 @@
 from django.db.models import QuerySet
 
-from activities.models import Activity
-
 
 def filter_by_date_range(
     queryset: QuerySet,
