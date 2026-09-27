@@ -1,6 +1,54 @@
 # Backend 4 — API REST de asignación de actividades
 
-API REST construida con Django REST Framework y PostgreSQL.
+API REST para gestión de asociados y actividades, construida con Django REST Framework, PostgreSQL, Gunicorn y Nginx.
+
+---
+
+## Tecnologías
+
+| Componente | Tecnología |
+|---|---|
+| Framework | Django 5.1 + Django REST Framework 3.15 |
+| Autenticación | SimpleJWT (Bearer token) |
+| Base de datos | PostgreSQL 16 |
+| Servidor de aplicación | Gunicorn 22 |
+| Reverse proxy | Nginx 1.27 |
+| Contenedores | Docker + Docker Compose |
+| Documentación API | drf-spectacular (OpenAPI 3) |
+| Carga masiva | openpyxl (XLSX) + csv (stdlib) |
+| Tests | pytest + pytest-django + pytest-cov |
+| Linting | ruff |
+
+---
+
+## Arquitectura
+
+```
+Cliente (puerto 80)
+        |
+        v
+   Nginx :80
+        |
+        +-- /static/  -->  archivos estáticos (volumen compartido)
+        |
+        +-- /api/, /admin/, /api/docs/
+                |
+                v
+        Gunicorn :8000
+                |
+                v
+        Django REST Framework
+                |
+                +-- Views / ViewSets   (HTTP, autenticación, permisos)
+                +-- Serializers        (validación de estructura)
+                +-- Services           (reglas de negocio)
+                +-- Models / ORM
+                        |
+                        v
+                PostgreSQL :5432
+```
+
+---
 
 ## Requisitos
 
@@ -9,29 +57,52 @@ API REST construida con Django REST Framework y PostgreSQL.
 
 ---
 
-## Configuración inicial
+## Variables de entorno
+
+Copiar `.env.example` y ajustar los valores:
 
 ```bash
 cp .env.example .env
 ```
 
-Edita `.env` con tus valores reales antes de levantar el proyecto.
+| Variable | Descripción | Ejemplo |
+|---|---|---|
+| `DJANGO_SECRET_KEY` | Clave secreta de Django | cadena aleatoria larga |
+| `DJANGO_DEBUG` | Modo debug | `True` (dev) / `False` (prod) |
+| `DJANGO_ALLOWED_HOSTS` | Hosts permitidos separados por coma | `localhost,127.0.0.1` |
+| `POSTGRES_DB` | Nombre de la base de datos | `api_db` |
+| `POSTGRES_USER` | Usuario de PostgreSQL | `api_user` |
+| `POSTGRES_PASSWORD` | Contraseña de PostgreSQL | `api_password` |
+| `POSTGRES_HOST` | Host de PostgreSQL | `db` |
+| `POSTGRES_PORT` | Puerto de PostgreSQL | `5432` |
+
+> `.env` nunca debe versionarse. `.env.example` contiene únicamente valores de ejemplo.
 
 ---
 
-## Levantar con Docker Compose
+## Ejecución con Docker
 
 ```bash
 docker compose up --build
 ```
 
+Este comando reconstruye la imagen, ejecuta migraciones, recolecta archivos estáticos e inicia Gunicorn y Nginx.
+
 ---
 
 ## Migraciones
 
+Las migraciones ya están versionadas. Para generarlas tras cambiar un modelo:
+
 ```bash
-docker compose exec web python manage.py makemigrations users activities registrations
+docker compose exec web python manage.py makemigrations
 docker compose exec web python manage.py migrate
+```
+
+Para verificar que no haya migraciones pendientes sin versionar:
+
+```bash
+docker compose exec web python manage.py makemigrations --check --dry-run
 ```
 
 ---
@@ -44,29 +115,24 @@ docker compose exec web python manage.py createsuperuser
 
 ---
 
-## Correr tests
+## Endpoints
 
-```bash
-docker compose exec web python manage.py test users activities registrations bulk_upload
-```
-
----
-
-## Endpoints disponibles
-
-| Método | Endpoint | Descripción |
-|---|---|---|
-| GET | `/api/health/` | Healthcheck |
-| POST | `/api/auth/token/` | Obtener JWT |
-| POST | `/api/auth/token/refresh/` | Refrescar JWT |
-| GET | `/api/asociados/` | Listar asociados |
-| POST | `/api/asociados/` | Crear asociado |
-| GET | `/api/actividades/` | Listar actividades |
-| POST | `/api/actividades/` | Crear actividad |
-| PATCH | `/api/actividades/{id}/` | Actualizar actividad |
-| DELETE | `/api/actividades/{id}/` | Eliminar actividad |
-| POST | `/api/carga-masiva/asociados/` | Carga masiva de asociados (CSV/XLSX) |
-| POST | `/api/carga-masiva/actividades/` | Carga masiva de actividades (CSV/XLSX) |
+| Método | Endpoint | Auth | Descripción |
+|---|---|---|---|
+| GET | `/api/health/` | No | Healthcheck |
+| GET | `/api/schema/` | No | Schema OpenAPI (YAML) |
+| GET | `/api/docs/` | No | Swagger UI |
+| POST | `/api/auth/token/` | No | Obtener JWT |
+| POST | `/api/auth/token/refresh/` | No | Refrescar JWT |
+| POST | `/api/registro/` | No | Solicitud pública de registro |
+| GET | `/api/asociados/` | JWT | Listar asociados |
+| POST | `/api/asociados/` | JWT Admin | Crear asociado |
+| GET | `/api/actividades/` | JWT | Listar actividades |
+| POST | `/api/actividades/` | JWT Admin | Crear actividad |
+| PATCH | `/api/actividades/{id}/` | JWT | Actualizar actividad |
+| DELETE | `/api/actividades/{id}/` | JWT | Eliminar actividad |
+| POST | `/api/carga-masiva/asociados/` | JWT Admin | Carga masiva de asociados (CSV/XLSX) |
+| POST | `/api/carga-masiva/actividades/` | JWT Admin | Carga masiva de actividades (CSV/XLSX) |
 
 ### Filtros de actividades
 
@@ -78,19 +144,75 @@ GET /api/actividades/?desde=2026-10-01&hasta=2026-10-31
 
 ---
 
-## Django Admin
+## Autenticación JWT
 
-```
-http://localhost:8000/admin/
+### Obtener token
+
+```bash
+curl -X POST http://localhost/api/auth/token/ \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@example.com","password":"tu_password"}'
 ```
 
-Modelos disponibles: **Users**, **Asociados**, **Activities**, **Registration Requests**
+```powershell
+Invoke-RestMethod -Method Post -Uri http://localhost/api/auth/token/ `
+  -ContentType "application/json" `
+  -Body '{"email":"admin@example.com","password":"tu_password"}'
+```
+
+Respuesta:
+
+```json
+{
+  "access": "<access_token>",
+  "refresh": "<refresh_token>"
+}
+```
+
+### Usar token
+
+```bash
+curl http://localhost/api/asociados/ \
+  -H "Authorization: Bearer <access_token>"
+```
+
+```powershell
+Invoke-RestMethod -Uri http://localhost/api/asociados/ `
+  -Headers @{ Authorization = "Bearer <access_token>" }
+```
 
 ---
 
-## Carga masiva (Fase 7)
+## Ejemplos de uso
 
-Solo administradores pueden usar estos endpoints. Aceptan `multipart/form-data` con un campo `file` (`.csv` o `.xlsx`).
+### Crear actividad
+
+```bash
+curl -X POST http://localhost/api/actividades/ \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "activity_type": "workshop",
+    "description": "Taller de Python",
+    "start_datetime": "2027-01-01T09:00:00Z",
+    "end_datetime": "2027-01-01T11:00:00Z",
+    "asociado": 1
+  }'
+```
+
+### Solicitud pública de registro
+
+```bash
+curl -X POST http://localhost/api/registro/ \
+  -H "Content-Type: application/json" \
+  -d '{"first_name":"Juan","last_name":"Perez","email":"juan@example.com"}'
+```
+
+---
+
+## Carga masiva
+
+Solo administradores. `multipart/form-data` con campo `file` (`.csv` o `.xlsx`).
 
 ### Formato CSV de asociados
 
@@ -106,7 +228,7 @@ tipo_actividad,descripcion,fecha_inicio,fecha_fin,asociado_email
 workshop,Taller de Python,2027-01-01T09:00:00Z,2027-01-01T11:00:00Z,assoc@example.com
 ```
 
-Tipos de actividad válidos: `workshop`, `seminar`, `meeting`, `training`, `other`
+Tipos válidos: `workshop`, `seminar`, `meeting`, `training`, `other`
 
 ### Respuesta
 
@@ -115,128 +237,199 @@ Tipos de actividad válidos: `workshop`, `seminar`, `meeting`, `training`, `othe
   "created": 2,
   "failed": 1,
   "errors": [
-    {"row": 3, "code": "DUPLICATE_EMAIL", "detail": "Email duplicado: ..."}
+    {"row": 3, "code": "DUPLICATE_EMAIL", "detail": "..."}
   ]
 }
 ```
 
-### Ejemplo bash
+Códigos de error por fila: `INVALID_EMAIL`, `DUPLICATE_EMAIL`, `DUPLICATE_IDENTIFICATION`, `INVALID_DATA`, `ASOCIADO_NOT_FOUND`, `INVALID_DATE`, `INVALID_DATE_RANGE`, `ACTIVITY_OVERLAP`.
 
 ```bash
-curl -X POST http://localhost:8000/api/carga-masiva/asociados/ \
+curl -X POST http://localhost/api/carga-masiva/asociados/ \
   -H "Authorization: Bearer <token>" \
   -F "file=@asociados.csv"
 ```
 
-```powershell
-$token = "..."
-Invoke-RestMethod -Method Post -Uri http://localhost:8000/api/carga-masiva/asociados/ `
-  -Headers @{ Authorization = "Bearer $token" } `
-  -Form @{ file = Get-Item asociados.csv }
-```
+---
+
+## Reglas de negocio
+
+- `fecha_fin` debe ser estrictamente posterior a `fecha_inicio` (400 si no se cumple).
+- No pueden existir dos actividades con fechas solapadas para el mismo asociado (409).
+- Las actividades pasadas son de solo lectura para asociados (403).
+- La carga masiva procesa cada fila independientemente: las filas válidas se crean aunque otras fallen.
+- Una solicitud de registro inicia siempre en estado `pendiente`.
+- No se puede aprobar o rechazar una solicitud que no esté pendiente.
+- Al aprobar una solicitud se crea automáticamente el usuario y el perfil de asociado.
 
 ---
 
-## Probar el healthcheck
+## Permisos
 
-```bash
-curl http://localhost:8000/api/health/
-```
-
-```powershell
-Invoke-RestMethod -Uri http://localhost:8000/api/health/
-```
-
-Respuesta esperada:
-
-```json
-{"status": "ok"}
-```
+| Acción | Admin | Asociado propio | Asociado otro | Anónimo |
+|---|---|---|---|---|
+| Listar actividades | Todas | Las propias | — | 401 |
+| Crear actividad | Sí | 403 | 403 | 401 |
+| Modificar actividad futura | Sí | Sí | 403 | 401 |
+| Modificar actividad pasada | Sí | 403 | 403 | 401 |
+| Eliminar actividad | Sí | Solo futuras propias | 403 | 401 |
+| Listar asociados | Sí | Sí | Sí | 401 |
+| Crear asociado | Sí | 403 | 403 | 401 |
+| Carga masiva | Sí | 403 | 403 | 401 |
+| Solicitud de registro | — | — | — | Público |
 
 ---
 
-## Autenticación JWT
+## OpenAPI / Swagger
 
-### Obtener token
-
-```bash
-curl -X POST http://localhost:8000/api/auth/token/ -H "Content-Type: application/json" -d '{"email":"user@example.com","password":"tu_password"}'
+```
+http://localhost/api/docs/      <- Swagger UI interactivo
+http://localhost/api/schema/    <- Schema YAML descargable
 ```
 
-```powershell
-Invoke-RestMethod -Method Post -Uri http://localhost:8000/api/auth/token/ -ContentType "application/json" -Body '{"email":"user@example.com","password":"tu_password"}'
-```
-
-### Refrescar token
-
-```bash
-curl -X POST http://localhost:8000/api/auth/token/refresh/ -H "Content-Type: application/json" -d '{"refresh":"el_refresh_token_aqui"}'
-```
-
-```powershell
-Invoke-RestMethod -Method Post -Uri http://localhost:8000/api/auth/token/refresh/ -ContentType "application/json" -Body '{"refresh":"el_refresh_token_aqui"}'
-```
+El schema incluye autenticación JWT, todos los endpoints, request/response y códigos HTTP relevantes.
 
 ---
 
-## CI/CD
+## Panel administrativo
 
-El pipeline de GitLab CI se define en `.gitlab-ci.yml` en la raíz del repositorio y se ejecuta en cada push a cualquier rama.
+```
+http://localhost/admin/
+```
 
-### Etapas
+Desde el admin:
+- Aprobar o rechazar solicitudes de registro en lote.
+- Gestionar usuarios, asociados y actividades.
 
-| Etapa | Job | Qué valida |
+---
+
+## Principios SOLID
+
+### S — Single Responsibility Principle
+
+Cada módulo tiene una única razón para cambiar:
+
+- `activities/services.py`: lógica de negocio pura (`validate_date_range`, `validate_no_overlap`, `create_activity`, `update_activity`). No sabe nada de HTTP.
+- `activities/permissions.py`: decide si el usuario puede acceder al objeto. No valida datos ni ejecuta lógica de negocio.
+- `bulk_upload/parsers.py`: parsea archivos CSV/XLSX a listas de dicts. No valida contenido ni accede a la base de datos.
+- `bulk_upload/services.py`: aplica validaciones fila por fila y persiste registros. No sabe de HTTP ni de formatos de archivo.
+
+### O — Open/Closed Principle
+
+Aplicación parcial y honesta:
+
+- `bulk_upload/parsers.py` está abierto a extensión: agregar soporte a un nuevo formato (ej. ODS) requiere añadir `parse_ods` y extender `parse_file` sin modificar el código existente.
+- Los serializers usan clases separadas para lectura (`ActivityReadSerializer`) y escritura (`ActivityWriteSerializer`), sin que un cambio en una afecte a la otra.
+
+No se diseñaron jerarquías de herencia para servicios. En un proyecto mayor, un strategy pattern para los parsers aplicaría OCP de forma más estricta.
+
+### L — Liskov Substitution Principle
+
+- `IsAdmin` en `bulk_upload/views.py` extiende `IsAuthenticated` respetando su contrato: unauthenticated devuelve 401, authenticated sin rol devuelve 403. No rompe el comportamiento esperado de la clase base.
+- `ActivityPermission` extiende `BasePermission` implementando `has_permission` y `has_object_permission` respetando la interfaz de DRF.
+
+### I — Interface Segregation Principle
+
+- Las vistas de carga masiva declaran explícitamente `parser_classes = [MultiPartParser]` en lugar de heredar el parser global. Cada vista expone solo los parsers que necesita.
+- `AsociadoViewSet` implementa solo `ListModelMixin` y `CreateModelMixin`. No expone `update` ni `destroy`, que no forman parte del contrato del enunciado.
+- `ActivityViewSet` excluye `RetrieveModelMixin` porque el enunciado no requiere `GET /actividades/{id}/`.
+
+### D — Dependency Inversion Principle
+
+Aplicación parcial y honesta:
+
+- `activities/views.py` depende de `ActivityValidationError` (abstracción) en lugar de capturar errores de ORM directamente. La vista reacciona al código de error sin saber cómo se valida.
+- `bulk_upload/services.py` reutiliza `validate_date_range` y `validate_no_overlap` de `activities/services.py`. Depende de las funciones del dominio, no del ORM directamente para las validaciones de negocio.
+
+No existe capa de repositorio ni interfaces formales (Protocol/ABC). En un proyecto con múltiples backends de datos esa sería la extensión natural.
+
+---
+
+## Pruebas
+
+```bash
+docker compose exec web pytest
+```
+
+| Métrica | Valor |
+|---|---|
+| Total de tests | 85 |
+| Tests pasando | 85 |
+| Cobertura total | 91% |
+| Umbral mínimo | 80% |
+
+Los tests cubren: autenticación, permisos, creación/modificación/eliminación de actividades, validación de fechas, solapamientos, solicitudes de registro, carga masiva CSV/XLSX, endpoints OpenAPI y healthcheck.
+
+### TDD visible en el historial
+
+Las reglas de negocio y permisos fueron desarrolladas con TDD estricto. El historial de git lo evidencia en dos commits consecutivos:
+
+- `40fdff9` — tests escritos primero: fechas, solapamientos y permisos, sin implementación.
+- `436229b` — implementacion de `services.py`, `permissions.py` y `views.py` para pasar los tests anteriores.
+
+Esto cubre las reglas mas criticas: validacion de fechas, deteccion de solapamientos y control de acceso por rol y estado de la actividad.
+
+Archivos con menor cobertura:
+
+| Archivo | Cobertura | Nota |
 |---|---|---|
-| `lint` | `lint` | `ruff check .` — estilo e imports |
-| `test` | `test` | Migraciones, pytest, cobertura ≥ 80% |
-| `build` | `build` | `docker build` de la imagen del backend |
+| `registrations/admin.py` | 54% | Acciones del Django Admin — difíciles de testear con APIClient |
+| `activities/permissions.py` | 86% | Casos extremos del permiso de objeto |
+| `bulk_upload/parsers.py` | 88% | Ramas de error en parsing |
 
-### lint
+---
 
-Ejecuta `ruff check .` con la configuración de `pyproject.toml`. Falla si hay errores de estilo, imports no usados o imports desordenados.
-
-Para reproducir localmente:
-
-```bash
-docker compose exec web ruff check .
-```
-
-### Migraciones
-
-Antes de los tests el pipeline verifica que no haya migraciones sin versionar:
-
-```bash
-python manage.py makemigrations --check --dry-run
-```
-
-Si alguien modifica un modelo sin generar la migración, este paso falla.
-
-### Tests y cobertura
-
-Ejecuta `pytest` con cobertura mínima del 80%. La cobertura actual es ~91%.
-
-Para reproducir localmente:
+## Cobertura
 
 ```bash
 docker compose exec web pytest --cov=. --cov-report=term-missing --cov-fail-under=80
 ```
 
-Falla si: algún test falla, o la cobertura total cae por debajo del 80%.
+---
 
-### Docker build
-
-Valida que la imagen puede construirse correctamente:
+## Lint
 
 ```bash
-docker build -t ihungo-backend:ci .
+docker compose exec web ruff check .
 ```
 
-No publica imágenes en ningún registry.
+Configuración en `pyproject.toml`. Reglas activas: `E`, `F`, `W`, `I`. Línea máxima: 120 caracteres.
 
-### Variables de CI
+---
 
-Todas las variables usadas en el pipeline son exclusivas de CI y no contienen secretos reales. Si en el futuro se necesita publicar imágenes, agregar estas variables en **GitLab → Settings → CI/CD → Variables**:
+## CI/CD
 
-- `CI_REGISTRY_USER`
-- `CI_REGISTRY_PASSWORD`
-- `CI_REGISTRY_IMAGE`
+Pipeline definido en `.gitlab-ci.yml` en la raíz del repositorio. Se ejecuta en cada push a cualquier rama.
+
+| Etapa | Qué valida |
+|---|---|
+| `lint` | `ruff check .` |
+| `test` | Migraciones + pytest + cobertura >= 80% |
+| `build` | `docker build` — valida que la imagen compila |
+
+---
+
+## Nginx y Gunicorn
+
+**Gunicorn** corre en el contenedor `web` en el puerto 8000. Configuración en `gunicorn.conf.py` (2 workers, timeout 60s).
+
+**Nginx** actúa como reverse proxy en el puerto 80. Sirve `/static/` directamente desde el volumen compartido sin pasar por Django. El resto del tráfico lo reenvía a Gunicorn.
+
+```bash
+docker compose logs web    # logs de Gunicorn
+docker compose logs nginx  # logs de Nginx
+```
+
+---
+
+## Decisiones técnicas
+
+| Decisión | Alternativa descartada | Razón |
+|---|---|---|
+| Email como `USERNAME_FIELD` | Username por defecto | El enunciado requiere autenticación por email |
+| `Asociado` como modelo separado de `User` | Campos extra en `User` | Permite tener admins sin datos de asociado |
+| Servicios como funciones puras | Métodos en el modelo | Más simples de testear, sin estado |
+| Detección XLSX por magic bytes | Solo por extensión | DRF no siempre propaga el nombre del archivo en tests |
+| `ruff` en lugar de flake8+isort+black | Múltiples herramientas | Una sola herramienta cubre lint, imports y formato |
+| Gunicorn en `entrypoint.sh` | CMD directo en Dockerfile | Permite ejecutar `migrate` y `collectstatic` antes de arrancar |
+| Overlap: `start < new_end AND end > new_start` | Comparación simple | Detecta todos los casos de solapamiento parcial |
