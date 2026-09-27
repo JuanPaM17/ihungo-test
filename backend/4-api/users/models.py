@@ -28,3 +28,18 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self) -> str:
         return self.email
+
+
+class Asociado(models.Model):
+    """Perfil extendido de un usuario con rol asociado."""
+
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name="asociado_profile",
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self) -> str:
+        return f"{self.user.first_name} {self.user.last_name} ({self.user.email})"

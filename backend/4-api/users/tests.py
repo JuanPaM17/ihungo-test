@@ -2,7 +2,7 @@ from django.test import TestCase
 from django.urls import reverse
 from rest_framework.test import APIClient
 
-from users.models import User
+from users.models import Asociado, User
 
 
 class UserModelTest(TestCase):
@@ -36,6 +36,32 @@ class UserModelTest(TestCase):
     def test_create_user_without_email_raises(self) -> None:
         with self.assertRaises(ValueError):
             User.objects.create_user(email="", password="pass1234")
+
+    def test_create_asociado(self) -> None:
+        user = User.objects.create_user(
+            email="asociado@example.com",
+            password="pass1234",
+            identification="777777",
+            first_name="Maria",
+            last_name="Lopez",
+            city="Cali",
+        )
+        asociado = Asociado.objects.create(user=user)
+        self.assertEqual(asociado.user, user)
+        self.assertEqual(str(asociado), "Maria Lopez (asociado@example.com)")
+
+    def test_asociado_is_one_to_one_with_user(self) -> None:
+        user = User.objects.create_user(
+            email="unique@example.com",
+            password="pass1234",
+            identification="888888",
+            first_name="Carlos",
+            last_name="Gomez",
+            city="Bogota",
+        )
+        Asociado.objects.create(user=user)
+        with self.assertRaises(Exception):
+            Asociado.objects.create(user=user)
 
 
 class AuthTokenTest(TestCase):

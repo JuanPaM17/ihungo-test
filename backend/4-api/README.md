@@ -30,7 +30,7 @@ docker compose up --build
 ## Migraciones
 
 ```bash
-docker compose exec web python manage.py makemigrations users
+docker compose exec web python manage.py makemigrations users activities registrations
 docker compose exec web python manage.py migrate
 ```
 
@@ -47,8 +47,18 @@ docker compose exec web python manage.py createsuperuser
 ## Correr tests
 
 ```bash
-docker compose exec web python manage.py test users
+docker compose exec web python manage.py test users activities registrations
 ```
+
+---
+
+## Django Admin
+
+```
+http://localhost:8000/admin/
+```
+
+Modelos disponibles: **Users**, **Asociados**, **Activities**, **Registration Requests**
 
 ---
 
