@@ -22,6 +22,7 @@ INSTALLED_APPS = [
     "users",
     "activities",
     "registrations",
+    "bulk_upload",
 ]
 
 MIDDLEWARE = [

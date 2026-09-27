@@ -47,7 +47,7 @@ docker compose exec web python manage.py createsuperuser
 ## Correr tests
 
 ```bash
-docker compose exec web python manage.py test users activities registrations
+docker compose exec web python manage.py test users activities registrations bulk_upload
 ```
 
 ---
@@ -65,6 +65,8 @@ docker compose exec web python manage.py test users activities registrations
 | POST | `/api/actividades/` | Crear actividad |
 | PATCH | `/api/actividades/{id}/` | Actualizar actividad |
 | DELETE | `/api/actividades/{id}/` | Eliminar actividad |
+| POST | `/api/carga-masiva/asociados/` | Carga masiva de asociados (CSV/XLSX) |
+| POST | `/api/carga-masiva/actividades/` | Carga masiva de actividades (CSV/XLSX) |
 
 ### Filtros de actividades
 
@@ -83,6 +85,55 @@ http://localhost:8000/admin/
 ```
 
 Modelos disponibles: **Users**, **Asociados**, **Activities**, **Registration Requests**
+
+---
+
+## Carga masiva (Fase 7)
+
+Solo administradores pueden usar estos endpoints. Aceptan `multipart/form-data` con un campo `file` (`.csv` o `.xlsx`).
+
+### Formato CSV de asociados
+
+```
+identificacion,nombre,apellidos,email,ciudad
+123456,Juan,Perez,juan@example.com,Bogota
+```
+
+### Formato CSV de actividades
+
+```
+tipo_actividad,descripcion,fecha_inicio,fecha_fin,asociado_email
+workshop,Taller de Python,2027-01-01T09:00:00Z,2027-01-01T11:00:00Z,assoc@example.com
+```
+
+Tipos de actividad válidos: `workshop`, `seminar`, `meeting`, `training`, `other`
+
+### Respuesta
+
+```json
+{
+  "created": 2,
+  "failed": 1,
+  "errors": [
+    {"row": 3, "code": "DUPLICATE_EMAIL", "detail": "Email duplicado: ..."}
+  ]
+}
+```
+
+### Ejemplo bash
+
+```bash
+curl -X POST http://localhost:8000/api/carga-masiva/asociados/ \
+  -H "Authorization: Bearer <token>" \
+  -F "file=@asociados.csv"
+```
+
+```powershell
+$token = "..."
+Invoke-RestMethod -Method Post -Uri http://localhost:8000/api/carga-masiva/asociados/ `
+  -Headers @{ Authorization = "Bearer $token" } `
+  -Form @{ file = Get-Item asociados.csv }
+```
 
 ---
 

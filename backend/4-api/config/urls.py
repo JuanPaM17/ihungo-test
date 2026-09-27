@@ -9,6 +9,8 @@ urlpatterns = [
     path("api/", include("common.urls")),
     path("api/", include("users.urls")),
     path("api/", include("activities.urls")),
+    path("api/", include("registrations.urls")),
+    path("api/", include("bulk_upload.urls")),
     path("api/auth/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/auth/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
 ]
