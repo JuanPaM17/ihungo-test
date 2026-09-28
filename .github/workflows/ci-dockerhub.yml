@@ -173,7 +173,7 @@ jobs:
 
       # ── Vulnerability scan con Trivy [FIX-3] ───────────────────────────────
       - name: Scan image vulnerabilities (Trivy)
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@0.30.0
         with:
           # Trivy escanea la imagen local recién construida
           image-ref: ${{ fromJSON(steps.meta.outputs.json).tags[0] }}
