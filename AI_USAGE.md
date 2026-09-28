@@ -144,7 +144,61 @@ Se utilizó ChatGPT para:
 - Se revisó el proyecto al final contra los endpoints, reglas de negocio, permisos, carga masiva, OpenAPI, Docker, CI y documentación requeridos por el reto.
 
 ## DevOps
-### DevOps 1
+### DevOps 1 — GitHub Actions → Docker Hub
+
+#### Herramientas utilizadas
+- Claude
+- ChatGPT
+
+#### Uso de IA
+Se utilizó Claude como apoyo para implementar y ajustar el reto DevOps 1, especialmente en:
+
+- revisión y mejora del `Dockerfile` del Backend 4;
+- conversión del build a una estrategia multi-stage;
+- creación de un usuario no root para ejecutar la aplicación dentro del contenedor;
+- definición y ajuste de `.dockerignore`;
+- creación del workflow `.github/workflows/ci-dockerhub.yml`;
+- configuración de jobs separados para calidad y construcción;
+- ejecución de `ruff` y pruebas antes del build;
+- configuración de Docker Buildx;
+- autenticación con Docker Hub mediante secrets;
+- generación de etiquetas trazables por rama, versión semántica y SHA;
+- integración de Trivy para escaneo de vulnerabilidades;
+- generación y carga de resultados SARIF en GitHub Security;
+- publicación de imágenes en Docker Hub solo desde `main` y tags;
+- uso de caché para optimizar builds sucesivos;
+- corrección de versiones de actions que inicialmente producían errores en el pipeline.
+
+Se utilizó ChatGPT para:
+
+- revisar el documento de la prueba DevOps y separar los requisitos obligatorios de las recomendaciones adicionales;
+- identificar los defectos intencionales presentes en las definiciones de referencia;
+- definir el orden de implementación y validación del reto;
+- orientar la creación del espejo del repositorio en GitHub;
+- configurar correctamente los secrets `DOCKERHUB_USERNAME` y `DOCKERHUB_TOKEN`;
+- validar el proceso de publicación manual inicial en Docker Hub;
+- revisar los errores del workflow relacionados con Trivy y las actions de seguridad;
+- validar las etiquetas publicadas en Docker Hub;
+- estructurar el contenido de `devops/EVIDENCIAS.md`;
+- definir qué capturas y enlaces eran realmente necesarios para evidenciar el reto.
+
+#### Decisiones y validaciones propias
+- Se mantuvo GitLab como repositorio principal y se creó un espejo en GitHub únicamente para ejecutar GitHub Actions.
+- Se validó manualmente `docker build` y `docker push` antes de automatizar la publicación mediante CI.
+- Se decidió utilizar una imagen Docker multi-stage para reducir el contenido de la imagen final.
+- Se decidió ejecutar la aplicación con un usuario no root para reducir privilegios dentro del contenedor.
+- Se verificó que `.env`, archivos de Git, cachés y otros archivos innecesarios quedaran excluidos mediante `.dockerignore`.
+- Se decidió que los Pull Requests ejecutaran lint, pruebas, build y escaneo, pero no publicaran imágenes.
+- Se condicionó el login a Docker Hub para evitar utilizar credenciales durante ejecuciones de Pull Request.
+- Se definió que el job `Build · Scan · Push` dependiera de `Lint & Tests`, evitando publicar una imagen si las validaciones de calidad fallan.
+- Se decidió no utilizar `latest` como etiqueta principal y mantener etiquetas trazables por rama, versión semántica y commit.
+- Se utilizaron las etiquetas `main`, `1.0.0`, `1.0` y `sha-6568187` para comprobar la trazabilidad de las imágenes publicadas.
+- Se creó y publicó el tag Git `v1.0.0` para comprobar que el workflow también se ejecutara correctamente ante versionado semántico.
+- Se verificó en Docker Hub que las imágenes correspondientes a `main`, versión semántica y SHA fueran publicadas correctamente.
+- Se corrigieron errores reales encontrados durante la ejecución del pipeline, incluyendo versiones inválidas o incompatibles de las actions de Trivy.
+- Se revisó que los secretos de Docker Hub permanecieran únicamente en GitHub Secrets y no fueran incluidos en el repositorio ni en el workflow.
+- Se documentaron en `devops/EVIDENCIAS.md` las ejecuciones exitosas, etiquetas publicadas y defectos corregidos.
+
 ### DevOps 2
 ### DevOps 3
 
