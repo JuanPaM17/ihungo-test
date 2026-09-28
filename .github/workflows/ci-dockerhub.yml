@@ -1,0 +1,202 @@
+# =============================================================================
+# CI/CD — Backend 4 → Docker Hub
+#
+# Defectos corregidos respecto al workflow de referencia:
+#
+#   [FIX-1] Referencia usaba push:true siempre, incluso en pull_request.
+#           Corrección: push solo ocurre en push a main o tags v*, nunca en PR.
+#
+#   [FIX-2] Referencia no ejecutaba lint ni tests antes del build.
+#           Corrección: job `quality` obligatorio; `build-scan-push` tiene
+#           needs:[quality], por lo que un fallo de tests aborta el build.
+#
+#   [FIX-3] Referencia no incluía escaneo de vulnerabilidades.
+#           Corrección: Trivy escanea la imagen local (load:true) antes
+#           de decidir si publicar.
+#
+#   [FIX-4] Referencia generaba etiqueta `latest` implícitamente.
+#           Corrección: latest deshabilitado. Solo etiquetas trazables:
+#           main | sha-<commit> | vX.Y.Z semántico.
+#
+#   [FIX-5] Login con secrets ocurría también en PR, exponiendo token
+#           a código de forks maliciosos.
+#           Corrección: el step de login está condicionado a
+#           github.event_name != 'pull_request'.
+# =============================================================================
+
+name: CI — Lint · Test · Build · Scan · Push
+
+on:
+  push:
+    branches: [main]
+    tags:    ["v*"]
+  pull_request:
+    branches: [main]
+
+# Permisos mínimos necesarios (security-events para subir SARIF de Trivy)
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # JOB 1: quality — lint + tests
+  # ---------------------------------------------------------------------------
+  quality:
+    name: Lint & Tests
+    runs-on: ubuntu-latest
+
+    # Servicio PostgreSQL idéntico al del .gitlab-ci.yml
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB:       ci_db
+          POSTGRES_USER:     ci_user
+          POSTGRES_PASSWORD: ci_password
+        options: >-
+          --health-cmd="pg_isready -U ci_user -d ci_db"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+        ports:
+          - 5432:5432
+
+    env:
+      DJANGO_SECRET_KEY:    "ci-secret-key-not-used-in-production"
+      DJANGO_DEBUG:         "True"
+      DJANGO_ALLOWED_HOSTS: "localhost,127.0.0.1"
+      POSTGRES_DB:          ci_db
+      POSTGRES_USER:        ci_user
+      POSTGRES_PASSWORD:    ci_password
+      POSTGRES_HOST:        localhost
+      POSTGRES_PORT:        "5432"
+
+    defaults:
+      run:
+        working-directory: backend/4-api
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # Cache de pip para acelerar runs sucesivos
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ hashFiles('backend/4-api/requirements.txt') }}
+          restore-keys: pip-
+
+      - name: Install dependencies
+        run: pip install --quiet -r requirements.txt
+
+      # ── Lint ────────────────────────────────────────────────────────────────
+      - name: Lint (ruff)
+        run: ruff check .
+
+      # ── Tests ───────────────────────────────────────────────────────────────
+      - name: Check no pending migrations
+        run: python manage.py makemigrations --check --dry-run
+
+      - name: Apply migrations
+        run: python manage.py migrate --noinput
+
+      - name: Run tests with coverage
+        run: pytest --cov=. --cov-report=term-missing --cov-report=xml --cov-fail-under=80
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-xml
+          path: backend/4-api/coverage.xml
+          retention-days: 7
+
+  # ---------------------------------------------------------------------------
+  # JOB 2: build-scan-push — depende de quality
+  # ---------------------------------------------------------------------------
+  build-scan-push:
+    name: Build · Scan · Push
+    runs-on: ubuntu-latest
+    needs: [quality]   # [FIX-2] build bloqueado hasta que calidad pase
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Login solo en push a main o tags — NUNCA en pull_request [FIX-1][FIX-5]
+      - name: Login to Docker Hub
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # Genera etiquetas trazables; latest deshabilitado [FIX-4]
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: docker.io/${{ secrets.DOCKERHUB_USERNAME }}/ihungo-backend
+          flavor: |
+            latest=false
+          tags: |
+            # En push a main → etiqueta "main"
+            type=raw,value=main,enable=${{ github.ref == 'refs/heads/main' }}
+            # En tag vX.Y.Z → etiqueta semántica
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            # Siempre → sha corto trazable
+            type=sha,prefix=sha-,format=short
+
+      # ── Build local (sin push) para poder escanear ─────────────────────────
+      # Se construye SIEMPRE en PR y en push; load:true carga en el daemon local
+      - name: Build image (local)
+        uses: docker/build-push-action@v6
+        with:
+          context: backend/4-api
+          push: false
+          load: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to:   type=gha,mode=max
+
+      # ── Vulnerability scan con Trivy [FIX-3] ───────────────────────────────
+      - name: Scan image vulnerabilities (Trivy)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          # Trivy escanea la imagen local recién construida
+          image-ref: ${{ fromJSON(steps.meta.outputs.json).tags[0] }}
+          format: sarif
+          output: trivy-results.sarif
+          severity: CRITICAL,HIGH
+          exit-code: "0"   # No abortar el pipeline por vulnerabilidades (informativo)
+          ignore-unfixed: true
+
+      - name: Upload Trivy SARIF to GitHub Security
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-results.sarif
+
+      # ── Push real a Docker Hub (solo main o tags) [FIX-1] ──────────────────
+      - name: Push image to Docker Hub
+        if: github.event_name != 'pull_request'
+        uses: docker/build-push-action@v6
+        with:
+          context: backend/4-api
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to:   type=gha,mode=max
