@@ -86,7 +86,37 @@ cp .env.example .env
 docker compose up --build
 ```
 
-Este comando reconstruye la imagen, ejecuta migraciones, recolecta archivos estáticos e inicia Gunicorn y Nginx.
+Este comando reconstruye la imagen (multi-stage), ejecuta migraciones, recolecta archivos estáticos e inicia Gunicorn y Nginx.
+
+### Verificar que el proceso no corre como root
+
+```bash
+# Ver el usuario del proceso principal dentro del contenedor
+docker compose exec web whoami
+# Esperado: appuser
+
+# Ver el UID/GID del proceso gunicorn
+docker compose exec web id
+# Esperado: uid=999(appuser) gid=999(appgroup)
+
+# Confirmar directamente con ps
+docker compose exec web ps aux
+# La columna USER debe mostrar appuser, no root
+```
+
+### Build standalone (sin Compose)
+
+```bash
+# Construir la imagen
+docker build -t ihungo-backend:local .
+
+# Verificar que no hay capas con secretos (secrets solo en .env, nunca en la imagen)
+docker history ihungo-backend:local
+
+# Inspecionar usuario efectivo
+docker run --rm --entrypoint whoami ihungo-backend:local
+# Esperado: appuser
+```
 
 ---
 
