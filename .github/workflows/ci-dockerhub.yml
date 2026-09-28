@@ -173,7 +173,8 @@ jobs:
 
       # ── Vulnerability scan con Trivy [FIX-3] ───────────────────────────────
       - name: Scan image vulnerabilities (Trivy)
-        uses: aquasecurity/trivy-action@v0.31.0
+        id: trivy
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ${{ fromJSON(steps.meta.outputs.json).tags[0] }}
           format: sarif
@@ -183,8 +184,8 @@ jobs:
           ignore-unfixed: true
 
       - name: Upload Trivy SARIF to GitHub Security
-        if: always()
-        uses: github/codeql-action/upload-sarif@v3
+        if: ${{ !cancelled() && hashFiles('trivy-results.sarif') != '' }}
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: trivy-results.sarif
 
