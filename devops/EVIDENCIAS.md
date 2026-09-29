@@ -507,22 +507,149 @@ Se deberán documentar como mínimo:
 
 ## Defectos corregidos — DevOps 3
 
-> Agregar aquí al menos tres defectos identificados y corregidos en los manifiestos de referencia.
+### FIX-1 — Namespace `default` usado directamente
 
-### FIX-1
+**Problema**
 
-```text
-[PENDIENTE]
+Los manifiestos de referencia despliegan recursos en el namespace `default`, compartido con otros workloads del clúster.
+
+**Riesgo**
+
+Falta de aislamiento: recursos de distintas aplicaciones conviven sin separación, dificultando la gestión de permisos, quotas y limpieza.
+
+**Corrección**
+
+Se creó un namespace dedicado `ihungo` con labels de aplicación. Todos los recursos del reto se despliegan dentro de él.
+
+**Archivo:** `namespace.yaml`
+
+---
+
+### FIX-2 — ConfigMap mezclando valores sensibles y no sensibles
+
+**Problema**
+
+Los manifiestos de referencia colocan credenciales como `POSTGRES_PASSWORD` o `DJANGO_SECRET_KEY` en el ConfigMap junto con configuración ordinaria.
+
+**Riesgo**
+
+Los ConfigMap no están cifrados en etcd. Cualquier usuario con acceso de lectura al namespace puede obtener las credenciales.
+
+**Corrección**
+
+Separación estricta: valores no sensibles en `configmap.yaml`, credenciales en `secret.yaml` de tipo `Opaque`. El Secret se creó desde CLI con `kubectl create secret generic` usando `openssl rand` para los valores reales, sin versionar credenciales en Git.
+
+**Archivos:** `configmap.yaml`, `secret.yaml`
+
+---
+
+### FIX-3 — Secret versionado con credenciales reales en base64
+
+**Problema**
+
+Los manifiestos de referencia incluyen el `secret.yaml` con valores reales codificados en base64 y lo suben al repositorio.
+
+**Riesgo**
+
+Base64 no es cifrado. Cualquiera con acceso al repositorio puede decodificar las credenciales con `base64 -d`. La penalización del reto es -15 puntos.
+
+**Corrección**
+
+El `secret.yaml` versionado contiene únicamente placeholders explícitamente identificados. El Secret real se creó localmente con:
+
+```bash
+kubectl create secret generic ihungo-secret \
+  --from-literal=DJANGO_SECRET_KEY="$(openssl rand -base64 48)" \
+  --from-literal=POSTGRES_USER="ihungo_user" \
+  --from-literal=POSTGRES_PASSWORD="$(openssl rand -base64 32)" \
+  --namespace=ihungo
 ```
 
-### FIX-2
+Las variables se hicieron `unset` tras la creación.
 
-```text
-[PENDIENTE]
+**Archivo:** `secret.yaml`
+
+---
+
+### FIX-4 — Deployment sin readinessProbe
+
+**Problema**
+
+Los manifiestos de referencia no definen `readinessProbe`. Kubernetes envía tráfico al pod en cuanto el contenedor arranca, antes de que Django haya completado la inicialización.
+
+**Riesgo**
+
+Los primeros requests reciben errores 502/503 porque la aplicación aún no está lista para atender tráfico.
+
+**Corrección**
+
+Se agregó `readinessProbe` sobre el endpoint real del proyecto `/api/health/` con `initialDelaySeconds: 15` y `failureThreshold: 3`.
+
+**Archivo:** `deployment.yaml`
+
+---
+
+### FIX-5 — Deployment sin requests ni limits de recursos
+
+**Problema**
+
+Los manifiestos de referencia no definen `resources`. Kubernetes no puede planificar correctamente los pods ni proteger el nodo.
+
+**Riesgo**
+
+Un pod con fuga de memoria puede consumir todos los recursos del nodo y derribar otros workloads. En un nodo de un solo control-plane como este clúster, eso derriba k3s completo.
+
+**Corrección**
+
+Se definieron `requests` y `limits` tanto para el backend como para PostgreSQL:
+
+```yaml
+resources:
+  requests:
+    cpu: "100m"
+    memory: "256Mi"
+  limits:
+    cpu: "500m"
+    memory: "512Mi"
 ```
 
-### FIX-3
+**Archivo:** `deployment.yaml`, `postgres.yaml`
 
-```text
-[PENDIENTE]
-```
+---
+
+### FIX-6 — Imagen con etiqueta mutable (`latest` o `main`)
+
+**Problema**
+
+Los manifiestos de referencia usan `latest` o una etiqueta de rama como `main`. Ambas son mutables: apuntan a imágenes distintas en momentos distintos.
+
+**Riesgo**
+
+No hay trazabilidad entre el manifiesto y el código que realmente está corriendo. Un redeploy puede traer una versión diferente sin cambiar el YAML.
+
+**Corrección**
+
+Se usa la etiqueta inmutable `sha-6568187`, que corresponde al SHA del commit que generó la imagen. Se combina con `imagePullPolicy: IfNotPresent` para coherencia con etiquetas fijas.
+
+**Archivo:** `deployment.yaml`
+
+---
+
+### FIX-7 — Variables de entorno hardcodeadas en el Deployment
+
+**Problema**
+
+Los manifiestos de referencia definen variables de entorno directamente en el Deployment con valores literales, incluyendo credenciales.
+
+**Riesgo**
+
+Duplicación de configuración, credenciales expuestas en el manifiesto y acoplamiento entre el Deployment y los valores de entorno.
+
+**Corrección**
+
+Todas las variables se inyectan desde fuentes externas:
+
+- Configuración no sensible → `configMapKeyRef` apuntando a `ihungo-config`
+- Credenciales → `secretKeyRef` apuntando a `ihungo-secret`
+
+**Archivo:** `deployment.yaml`
