@@ -1,0 +1,149 @@
+# =============================================================================
+# Deployment — ihungo-backend
+#
+# Decisiones de diseño:
+# - Imagen con etiqueta inmutable sha-6568187: permite trazabilidad exacta
+#   al commit que generó la imagen. Nunca latest ni main (mutables).
+# - imagePullPolicy: IfNotPresent: coherente con etiqueta inmutable;
+#   si la imagen ya está en el nodo no se vuelve a descargar.
+# - 2 réplicas mínimo: permite demostrar rolling update sin caída de servicio.
+# - RollingUpdate explícito con maxUnavailable:0: garantiza que siempre haya
+#   al menos una réplica disponible durante el despliegue.
+# - readinessProbe y livenessProbe sobre /api/health/ (endpoint real del proyecto).
+# - Todas las variables de entorno vienen de ConfigMap o Secret. Sin hardcode.
+# - securityContext runAsNonRoot confirma a nivel de k8s lo que el Dockerfile
+#   ya garantiza (usuario appuser).
+# - requests y limits definidos para evitar que el pod consuma recursos sin límite.
+# =============================================================================
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ihungo-backend
+  namespace: ihungo
+  labels:
+    app: ihungo-backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ihungo-backend
+
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0   # Nunca bajar de 2 réplicas durante el update
+      maxSurge: 1         # Permitir 1 pod extra durante la transición
+
+  template:
+    metadata:
+      labels:
+        app: ihungo-backend
+    spec:
+      # Refuerza a nivel de clúster que el contenedor no corre como root
+      securityContext:
+        runAsNonRoot: true
+
+      # Esperar a que postgres esté listo antes de arrancar
+      initContainers:
+        - name: wait-for-postgres
+          image: postgres:16-alpine
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            - |
+              until pg_isready -h postgres-svc -p 5432; do
+                echo "Waiting for postgres..."; sleep 2;
+              done
+          env:
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: ihungo-secret
+                  key: POSTGRES_PASSWORD
+
+      containers:
+        - name: backend
+          image: docker.io/juanpablomc/ihungo-backend:sha-6568187
+          imagePullPolicy: IfNotPresent
+
+          ports:
+            - containerPort: 8000
+
+          # ── Variables no sensibles desde ConfigMap ──────────────────────
+          env:
+            - name: DJANGO_DEBUG
+              valueFrom:
+                configMapKeyRef:
+                  name: ihungo-config
+                  key: DJANGO_DEBUG
+
+            - name: DJANGO_ALLOWED_HOSTS
+              valueFrom:
+                configMapKeyRef:
+                  name: ihungo-config
+                  key: DJANGO_ALLOWED_HOSTS
+
+            - name: POSTGRES_DB
+              valueFrom:
+                configMapKeyRef:
+                  name: ihungo-config
+                  key: POSTGRES_DB
+
+            - name: POSTGRES_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: ihungo-config
+                  key: POSTGRES_HOST
+
+            - name: POSTGRES_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: ihungo-config
+                  key: POSTGRES_PORT
+
+          # ── Variables sensibles desde Secret ────────────────────────────
+            - name: DJANGO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: ihungo-secret
+                  key: DJANGO_SECRET_KEY
+
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: ihungo-secret
+                  key: POSTGRES_USER
+
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: ihungo-secret
+                  key: POSTGRES_PASSWORD
+
+          # ── Probes sobre el endpoint real del proyecto ───────────────────
+          readinessProbe:
+            httpGet:
+              path: /api/health/
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            failureThreshold: 3
+
+          livenessProbe:
+            httpGet:
+              path: /api/health/
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            failureThreshold: 5
+
+          # ── Recursos ─────────────────────────────────────────────────────
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"

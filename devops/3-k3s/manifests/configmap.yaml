@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ihungo-config
+  namespace: ihungo
+  labels:
+    app: ihungo-backend
+data:
+  # Django
+  DJANGO_DEBUG:         "False"
+  DJANGO_ALLOWED_HOSTS: "localhost,127.0.0.1"
+
+  # PostgreSQL — valores no sensibles
+  POSTGRES_DB:   ihungo_db
+  POSTGRES_HOST: postgres-svc
+  POSTGRES_PORT: "5432"

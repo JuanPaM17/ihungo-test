@@ -1,0 +1,115 @@
+# =============================================================================
+# PostgreSQL — StatefulSet + Service + PVC
+#
+# Decisiones de diseño:
+# - StatefulSet en lugar de Deployment: garantiza identidad estable y orden
+#   de arranque/parada, necesario para bases de datos con volumen persistente.
+# - volumeClaimTemplates en lugar de PVC separado: el StatefulSet gestiona
+#   su propio PVC; si el pod se elimina, el volumen persiste.
+# - Versión explícita postgres:16-alpine: coherente con docker-compose.yml
+#   del proyecto. Nunca latest.
+# - Credenciales inyectadas desde Secret ihungo-secret (sin hardcode).
+# - POSTGRES_DB inyectado desde ConfigMap ihungo-config.
+# - Service ClusterIP (interno): solo accesible dentro del namespace.
+#   El nombre postgres-svc coincide con POSTGRES_HOST en ConfigMap.
+# =============================================================================
+
+# ── Service interno ──────────────────────────────────────────────────────────
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-svc
+  namespace: ihungo
+  labels:
+    app: postgres
+spec:
+  selector:
+    app: postgres
+  ports:
+    - port: 5432
+      targetPort: 5432
+  clusterIP: None   # Headless: StatefulSet prefiere DNS estable
+
+---
+
+# ── StatefulSet ──────────────────────────────────────────────────────────────
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: ihungo
+  labels:
+    app: postgres
+spec:
+  serviceName: postgres-svc
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5432
+
+          env:
+            # POSTGRES_DB viene del ConfigMap (no sensible)
+            - name: POSTGRES_DB
+              valueFrom:
+                configMapKeyRef:
+                  name: ihungo-config
+                  key: POSTGRES_DB
+
+            # POSTGRES_USER y POSTGRES_PASSWORD vienen del Secret
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: ihungo-secret
+                  key: POSTGRES_USER
+
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: ihungo-secret
+                  key: POSTGRES_PASSWORD
+
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "$(POSTGRES_USER)", "-d", "$(POSTGRES_DB)"]
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "$(POSTGRES_USER)", "-d", "$(POSTGRES_DB)"]
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            failureThreshold: 5
+
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 1Gi
