@@ -279,4 +279,64 @@ Se utilizó ChatGPT para:
 
 ## IA
 ### IA 1
-### IA 2
+
+### IA 2 — Co-creación en desarrollo guiado por guías
+
+#### Herramientas utilizadas
+- Claude
+- ChatGPT
+
+#### Uso de IA
+
+Se utilizó Claude como apoyo para estructurar el ejercicio de IA 2 y organizar los artefactos solicitados por el reto, especialmente en:
+
+- separación del entregable entre `RESPUESTAS.md` y la carpeta `specs/`;
+- definición de la estructura de `requirements.md`, `design.md`, `plan.md`, `rules.md` y `bitacora.md`;
+- organización de las 15 respuestas del reto por los bloques A, B, C y D;
+- apoyo para convertir experiencias reales de la prueba en ejemplos concretos;
+- identificación de decisiones, correcciones y rechazos realizados durante el desarrollo;
+- definición de criterios de aceptación verificables;
+- descomposición de la funcionalidad seleccionada en unidades de trabajo;
+- trazabilidad entre criterios de aceptación y unidades de trabajo;
+- documentación de alternativas descartadas y su justificación;
+- preparación de una guía de reglas para el asistente;
+- documentación de una bitácora de aprobación, corrección y rechazo de propuestas de IA.
+
+Se utilizó ChatGPT para:
+
+- revisar el documento de la prueba de IA y diferenciar claramente IA 1 de IA 2;
+- confirmar que IA 2 era obligatorio e independiente de IA 1;
+- interpretar el objetivo de desarrollo guiado por guías, AI-DLC y Spec-Driven Development;
+- revisar el requisito de respuestas de 150 a 300 palabras y la necesidad de utilizar ejemplos reales;
+- seleccionar la carga masiva de asociados del Backend 4 como funcionalidad para el ejercicio práctico;
+- convertir la experiencia real de desarrollo de Backend 4 y DevOps en ejemplos para las respuestas;
+- estructurar las respuestas evitando definiciones genéricas;
+- definir criterios de aceptación en formato verificable;
+- separar requisitos funcionales, decisiones de diseño y plan de implementación;
+- dividir la carga masiva de asociados en unidades de trabajo pequeñas y dimensionadas;
+- relacionar las unidades de trabajo con los criterios de aceptación;
+- definir reglas explícitas para el uso de asistentes de IA;
+- construir una bitácora coherente con las decisiones tomadas durante la implementación;
+- revisar la nota del documento sobre commits y aclarar que solo aplica a nueva implementación realizada dentro del ejercicio;
+- verificar que no fuera necesario modificar retroactivamente el historial de Git de la funcionalidad ya implementada.
+
+#### Decisiones y validaciones propias
+
+- Se decidió utilizar como ejercicio práctico la funcionalidad de carga masiva de asociados ya implementada en Backend 4.
+- Se evitó crear una funcionalidad nueva únicamente para cumplir IA 2.
+- Se decidió documentar el proceso de forma retrospectiva pero coherente con las decisiones reales tomadas durante el desarrollo.
+- Se mantuvieron ejemplos basados en situaciones reales ocurridas durante Backend y DevOps, en lugar de utilizar ejemplos abstractos.
+- Se decidió que los criterios de aceptación utilizaran identificadores estables como `AC-01`, `AC-02`, etc.
+- Se organizó `plan.md` utilizando unidades de trabajo `UT-01`, `UT-02`, etc., dimensionadas como XS, S o M.
+- Se relacionaron explícitamente las unidades de trabajo con uno o más criterios de aceptación.
+- Se decidió separar parsing, normalización, validación y persistencia en la carga masiva para reducir acoplamiento.
+- Se mantuvo la decisión de procesar filas de forma independiente para que una fila inválida no invalide las filas correctas.
+- Se rechazó como diseño principal una transacción global que abortara toda la carga ante el primer error.
+- Se mantuvo la reutilización de las reglas de negocio existentes para evitar duplicar validaciones entre el flujo individual y el flujo masivo.
+- Se decidió utilizar identificadores funcionales como email o identificación en lugar de depender de IDs internos.
+- Se documentaron como reglas del asistente la prohibición de hardcodear secretos, ejecutar comandos destructivos sin aprobación o introducir dependencias sin justificación.
+- Se mantuvo la aprobación humana como requisito para decisiones que afecten seguridad, contratos, persistencia, permisos o arquitectura.
+- Se utilizaron experiencias reales de esta misma prueba para justificar la importancia de validar las propuestas de IA contra el entorno real.
+- Se documentó en la bitácora cuándo una propuesta de IA fue aceptada, rechazada o corregida y el motivo de la decisión.
+- Se decidió no reescribir ni alterar commits antiguos de Backend 4 para agregar referencias `UT-*`, ya que la funcionalidad ya estaba implementada antes del ejercicio de IA 2.
+- Se dejó establecido que, si se realizara nueva implementación dentro de IA 2, los nuevos commits sí deberían referenciar las unidades correspondientes de `plan.md`.
