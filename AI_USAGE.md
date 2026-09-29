@@ -199,8 +199,83 @@ Se utilizó ChatGPT para:
 - Se revisó que los secretos de Docker Hub permanecieran únicamente en GitHub Secrets y no fueran incluidos en el repositorio ni en el workflow.
 - Se documentaron en `devops/EVIDENCIAS.md` las ejecuciones exitosas, etiquetas publicadas y defectos corregidos.
 
-### DevOps 2
-### DevOps 3
+### DevOps 3 — Despliegue en k3s
+
+#### Herramientas utilizadas
+- Claude
+- ChatGPT
+
+#### Uso de IA
+Se utilizó Claude como apoyo para estructurar e implementar el reto DevOps 3 de forma incremental, especialmente en:
+
+- definición de la estructura de manifiestos de Kubernetes;
+- creación de `namespace.yaml`;
+- creación de `configmap.yaml`;
+- creación de `secret.yaml` con placeholders seguros;
+- definición de la estrategia para crear el Secret real desde CLI sin versionar credenciales;
+- creación del manifiesto de PostgreSQL dentro del clúster;
+- configuración de `StatefulSet`, `PersistentVolumeClaim` y Service interno para PostgreSQL;
+- creación y ajuste de `deployment.yaml` para el backend;
+- configuración de dos réplicas;
+- configuración de estrategia `RollingUpdate`;
+- uso de imagen con etiqueta inmutable basada en SHA;
+- configuración de `readinessProbe` y `livenessProbe`;
+- definición de `requests` y `limits` de CPU y memoria;
+- uso de `ConfigMap` y `Secret` mediante `configMapKeyRef` y `secretKeyRef`;
+- configuración de `securityContext` y ejecución no root;
+- creación del init container `wait-for-postgres`;
+- creación del `Service` de tipo `NodePort`;
+- preparación de comandos de validación y evidencias para el despliegue.
+
+Se utilizó ChatGPT para:
+
+- revisar los requisitos del documento DevOps antes de implementar cada fase;
+- dividir DevOps 3 en pasos pequeños para evitar aplicar todos los manifiestos de una sola vez;
+- orientar la instalación y configuración de k3s en WSL2;
+- configurar `kubectl` para trabajar sin `sudo`;
+- revisar la estrategia de separación entre ConfigMap y Secret;
+- corregir la forma de crear secretos reales sin escribir credenciales directamente en archivos versionados;
+- revisar errores reales producidos durante la ejecución del Deployment;
+- analizar `CreateContainerConfigError` y eventos de Kubernetes;
+- identificar el conflicto entre `runAsNonRoot` y el init container basado en `postgres:16-alpine`;
+- verificar el UID/GID real del usuario `postgres` dentro de la imagen y ajustar el `securityContext`;
+- identificar el conflicto entre `runAsNonRoot` y el usuario no numérico `appuser` de la imagen del backend;
+- verificar el UID/GID real de `appuser` y `appgroup` y ajustar el `securityContext`;
+- analizar los reinicios de los Pods mediante logs anteriores;
+- identificar que las probes fallaban por `Django DisallowedHost`;
+- proponer el uso de `Host: localhost` en las probes en lugar de abrir `ALLOWED_HOSTS`;
+- validar que las dos réplicas alcanzaran estado `1/1 Running`;
+- validar el `Service` NodePort y el endpoint `/api/health/`;
+- definir la estrategia para demostrar un rolling update sin caída;
+- revisar qué capturas y resultados debían conservarse en `EVIDENCIAS.md`;
+- diferenciar defectos de la definición de referencia de problemas reales encontrados durante la implementación.
+
+#### Decisiones y validaciones propias
+- Se decidió ejecutar k3s localmente sobre WSL2 en lugar de utilizar un VPS o una máquina virtual separada.
+- Se verificó manualmente que el nodo `madrigal` quedara en estado `Ready`.
+- Se configuró `kubectl` para utilizar una copia local del kubeconfig y poder operar sin `sudo`.
+- Se decidió utilizar un namespace dedicado llamado `ihungo`.
+- Se separó la configuración no sensible en `ConfigMap` y los valores sensibles en `Secret`.
+- Se decidió no aplicar credenciales reales desde un archivo `secret.yaml` versionado.
+- Se generaron los valores sensibles reales localmente y se creó `ihungo-secret` mediante `kubectl`, manteniendo los valores fuera de Git.
+- Se decidió desplegar PostgreSQL dentro del mismo clúster para que la solución fuera reproducible y no dependiera de una base externa.
+- Se utilizó almacenamiento persistente para PostgreSQL mediante PVC.
+- Se decidió utilizar la imagen `docker.io/juanpablomc/ihungo-backend:sha-6568187` para mantener trazabilidad e inmutabilidad.
+- Se configuraron dos réplicas del backend para permitir la demostración de actualizaciones sin caída.
+- Se configuró `RollingUpdate` con `maxUnavailable: 0` y `maxSurge: 1`.
+- Se mantuvo `runAsNonRoot: true` en lugar de eliminar la restricción cuando aparecieron errores de seguridad.
+- Se verificó directamente dentro de `postgres:16-alpine` que el usuario `postgres` utiliza UID/GID `70`, y se configuró explícitamente en el init container.
+- Se verificó directamente sobre la imagen del backend que `appuser` y `appgroup` utilizan UID/GID `999`, y se configuraron explícitamente en el contenedor.
+- Se mantuvo el init container `wait-for-postgres` para evitar que Django iniciara antes de que PostgreSQL aceptara conexiones.
+- Se verificó que `postgres-svc:5432` aceptara conexiones antes de continuar con el arranque del backend.
+- Se mantuvieron `readinessProbe` y `livenessProbe` sobre el endpoint real `/api/health/`.
+- Se decidió configurar `Host: localhost` en las probes en lugar de usar `ALLOWED_HOSTS=*`.
+- Se verificó manualmente que ambas réplicas del backend llegaran a `1/1 Running` y que el Deployment quedara `2/2 Ready`.
+- Se expuso el backend mediante un `Service` de tipo `NodePort` en el puerto `30080`.
+- Se verificó manualmente desde WSL2 que `curl http://localhost:30080/api/health/` respondiera `{"status":"ok"}`.
+- Se realizó un rolling update forzado mediante un cambio en el Pod template para demostrar el comportamiento del Deployment sin necesidad de cambiar la imagen.
+- Durante el rolling update se mantuvo un health check continuo y se verificó que las respuestas HTTP permanecieran en `200`.
+- Se conservaron capturas del namespace, ConfigMap, Secret, Pods, Service NodePort, health check, rolling update y continuidad del servicio para documentarlas en `EVIDENCIAS.md`.
 
 ## IA
 ### IA 1

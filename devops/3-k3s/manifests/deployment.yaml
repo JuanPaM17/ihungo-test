@@ -49,6 +49,10 @@ spec:
         - name: wait-for-postgres
           image: postgres:16-alpine
           imagePullPolicy: IfNotPresent
+          securityContext:
+            runAsUser: 70
+            runAsGroup: 70
+            runAsNonRoot: true
           command:
             - sh
             - -c
@@ -67,6 +71,10 @@ spec:
         - name: backend
           image: docker.io/juanpablomc/ihungo-backend:sha-6568187
           imagePullPolicy: IfNotPresent
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 999
+            runAsGroup: 999
 
           ports:
             - containerPort: 8000
@@ -123,10 +131,16 @@ spec:
                   key: POSTGRES_PASSWORD
 
           # ── Probes sobre el endpoint real del proyecto ───────────────────
+          # Se envía Host: localhost para que Django no rechace el request
+          # con 400 Bad Request por ALLOWED_HOSTS, sin necesidad de abrir
+          # ALLOWED_HOSTS a valores internos del clúster.
           readinessProbe:
             httpGet:
               path: /api/health/
               port: 8000
+              httpHeaders:
+                - name: Host
+                  value: localhost
             initialDelaySeconds: 15
             periodSeconds: 10
             failureThreshold: 3
@@ -135,6 +149,9 @@ spec:
             httpGet:
               path: /api/health/
               port: 8000
+              httpHeaders:
+                - name: Host
+                  value: localhost
             initialDelaySeconds: 30
             periodSeconds: 15
             failureThreshold: 5

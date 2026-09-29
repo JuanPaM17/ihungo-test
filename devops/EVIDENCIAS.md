@@ -332,32 +332,6 @@ Es posible relacionar cada imagen con su rama, versión o commit.
 
 ---
 
-## FIX-5 — Uso innecesario de credenciales en Pull Requests
-
-### Problema
-
-Realizar login en Docker Hub en ejecuciones que no necesitan publicar imágenes incrementa innecesariamente el uso de secretos.
-
-### Riesgo
-
-Mayor superficie de exposición de credenciales.
-
-### Corrección
-
-El step:
-
-```text
-Login to Docker Hub
-```
-
-solo se ejecuta cuando el evento no es `pull_request`.
-
-### Resultado
-
-Las credenciales se utilizan únicamente en escenarios que realmente requieren publicación.
-
----
-
 # 7. Mejoras realizadas al Dockerfile
 
 La imagen del Backend 4 también fue ajustada para cumplir criterios de seguridad y optimización.
@@ -461,147 +435,349 @@ Se verificó:
 
 # DevOps 3 — Despliegue en k3s
 
-> Esta sección se completará durante la ejecución del Reto DevOps 3.
+## 1. Objetivo
 
-## Evidencias esperadas
+Desplegar la imagen construida en DevOps 1 dentro de un clúster k3s local, utilizando configuración externalizada, probes de salud, recursos definidos, una etiqueta de imagen inmutable y un `Service` de tipo `NodePort`.
 
-Se deberán documentar como mínimo:
-
-- recursos creados en el namespace;
-- Deployment funcionando;
-- Pods en estado `Running`;
-- Service `NodePort`;
-- acceso exitoso a `/api/health/`;
-- configuración mediante ConfigMap y Secret;
-- readiness probe;
-- liveness probe;
-- recursos configurados;
-- imagen con etiqueta inmutable;
-- rolling update sin caída del servicio.
-
-### Evidencia — Recursos del clúster
+La imagen utilizada fue:
 
 ```text
-[AGREGAR CAPTURA / ENLACE]
+docker.io/juanpablomc/ihungo-backend:sha-6568187
 ```
 
-### Evidencia — Health check a través del Service
+El despliegue se realizó sobre un clúster k3s local ejecutado en WSL2.
+
+---
+
+## 2. Arquitectura desplegada
 
 ```text
-[AGREGAR CAPTURA / ENLACE]
-```
-
-### Evidencia — Probes
-
-```text
-[AGREGAR CAPTURA / ENLACE]
-```
-
-### Evidencia — Rolling update
-
-```text
-[AGREGAR CAPTURA / ENLACE]
+Windows
+└── WSL2 Ubuntu
+    └── k3s
+        └── namespace: ihungo
+            ├── ConfigMap: ihungo-config
+            ├── Secret: ihungo-secret
+            ├── StatefulSet: postgres
+            │   ├── Pod: postgres-0
+            │   ├── PVC
+            │   └── Service: postgres-svc
+            ├── Deployment: ihungo-backend
+            │   ├── 2 réplicas
+            │   ├── readinessProbe
+            │   ├── livenessProbe
+            │   ├── requests / limits
+            │   └── RollingUpdate
+            └── Service NodePort: ihungo-backend
+                └── 80 → 8000 → 30080
 ```
 
 ---
 
-## Defectos corregidos — DevOps 3
+## 3. Manifiestos
 
-### FIX-1 — Namespace `default` usado directamente
+Los manifiestos utilizados se encuentran en:
 
-**Problema**
+```text
+devops/3-k3s/manifests/
+```
 
-Los manifiestos de referencia despliegan recursos en el namespace `default`, compartido con otros workloads del clúster.
+Archivos:
 
-**Riesgo**
-
-Falta de aislamiento: recursos de distintas aplicaciones conviven sin separación, dificultando la gestión de permisos, quotas y limpieza.
-
-**Corrección**
-
-Se creó un namespace dedicado `ihungo` con labels de aplicación. Todos los recursos del reto se despliegan dentro de él.
-
-**Archivo:** `namespace.yaml`
-
----
-
-### FIX-2 — ConfigMap mezclando valores sensibles y no sensibles
-
-**Problema**
-
-Los manifiestos de referencia colocan credenciales como `POSTGRES_PASSWORD` o `DJANGO_SECRET_KEY` en el ConfigMap junto con configuración ordinaria.
-
-**Riesgo**
-
-Los ConfigMap no están cifrados en etcd. Cualquier usuario con acceso de lectura al namespace puede obtener las credenciales.
-
-**Corrección**
-
-Separación estricta: valores no sensibles en `configmap.yaml`, credenciales en `secret.yaml` de tipo `Opaque`. El Secret se creó desde CLI con `kubectl create secret generic` usando `openssl rand` para los valores reales, sin versionar credenciales en Git.
-
-**Archivos:** `configmap.yaml`, `secret.yaml`
+```text
+namespace.yaml
+configmap.yaml
+secret.yaml
+postgres.yaml
+deployment.yaml
+service.yaml
+```
 
 ---
 
-### FIX-3 — Secret versionado con credenciales reales en base64
+# 4. Evidencias
 
-**Problema**
+## Evidencia 5 — Namespace dedicado
 
-Los manifiestos de referencia incluyen el `secret.yaml` con valores reales codificados en base64 y lo suben al repositorio.
+Se creó el namespace:
 
-**Riesgo**
+```text
+ihungo
+```
 
-Base64 no es cifrado. Cualquiera con acceso al repositorio puede decodificar las credenciales con `base64 -d`. La penalización del reto es -15 puntos.
+Esto permite mantener aislados los recursos asociados al reto.
 
-**Corrección**
+**Captura**
 
-El `secret.yaml` versionado contiene únicamente placeholders explícitamente identificados. El Secret real se creó localmente con:
+![Namespace ihungo activo](./screenshots/05-namespace.png)
+
+---
+
+## Evidencia 6 — ConfigMap
+
+La configuración no sensible del backend se externalizó mediante:
+
+```text
+ihungo-config
+```
+
+Entre los valores utilizados se encuentran las variables de configuración de Django y PostgreSQL que no contienen credenciales.
+
+**Captura**
+
+![ConfigMap ihungo-config](./screenshots/06-configmap.png)
+
+---
+
+## Evidencia 7 — Secret
+
+Los valores sensibles se almacenan en:
+
+```text
+ihungo-secret
+```
+
+El Secret real se creó localmente mediante `kubectl` y los valores reales no se versionaron en Git.
+
+La evidencia muestra únicamente los nombres de las claves y el tamaño de sus valores, sin exponer credenciales.
+
+**Captura**
+
+![Secret ihungo-secret](./screenshots/07-secret-describe.png)
+
+---
+
+## Evidencia 8 — Pods en ejecución
+
+Se verificó que PostgreSQL y las dos réplicas del backend se encontraran en estado `Running` y `Ready`.
+
+Estado esperado y verificado:
+
+```text
+ihungo-backend-...   1/1   Running
+ihungo-backend-...   1/1   Running
+postgres-0           1/1   Running
+```
+
+El Deployment del backend quedó con:
+
+```text
+READY:       2/2
+UP-TO-DATE:  2
+AVAILABLE:   2
+```
+
+**Captura**
+
+![Pods del backend y PostgreSQL en Running](./screenshots/08-pods-running.png)
+
+---
+
+## Evidencia 9 — Service NodePort
+
+El backend se expuso mediante un `Service` de tipo `NodePort`.
+
+Configuración:
+
+```text
+Service:    ihungo-backend
+Type:       NodePort
+Port:       80
+TargetPort: 8000
+NodePort:   30080
+```
+
+**Captura**
+
+![Service NodePort del backend](./screenshots/09-svc-nodeport.png)
+
+---
+
+## Evidencia 10 — Health check
+
+Se verificó el acceso al backend a través del `NodePort` desde el entorno WSL2:
 
 ```bash
-kubectl create secret generic ihungo-secret \
-  --from-literal=DJANGO_SECRET_KEY="$(openssl rand -base64 48)" \
-  --from-literal=POSTGRES_USER="ihungo_user" \
-  --from-literal=POSTGRES_PASSWORD="$(openssl rand -base64 32)" \
-  --namespace=ihungo
+curl http://localhost:30080/api/health/
 ```
 
-Las variables se hicieron `unset` tras la creación.
+Respuesta obtenida:
 
-**Archivo:** `secret.yaml`
+```json
+{"status":"ok"}
+```
 
----
+Esto confirma que el Service enruta correctamente hacia los Pods del backend y que la aplicación responde con estado saludable.
 
-### FIX-4 — Deployment sin readinessProbe
+**Captura**
 
-**Problema**
-
-Los manifiestos de referencia no definen `readinessProbe`. Kubernetes envía tráfico al pod en cuanto el contenedor arranca, antes de que Django haya completado la inicialización.
-
-**Riesgo**
-
-Los primeros requests reciben errores 502/503 porque la aplicación aún no está lista para atender tráfico.
-
-**Corrección**
-
-Se agregó `readinessProbe` sobre el endpoint real del proyecto `/api/health/` con `initialDelaySeconds: 15` y `failureThreshold: 3`.
-
-**Archivo:** `deployment.yaml`
+![Health check exitoso](./screenshots/10-health-curl.png)
 
 ---
 
-### FIX-5 — Deployment sin requests ni limits de recursos
+## Evidencia 11 — Rolling update
 
-**Problema**
+El Deployment utiliza estrategia:
 
-Los manifiestos de referencia no definen `resources`. Kubernetes no puede planificar correctamente los pods ni proteger el nodo.
+```yaml
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 0
+    maxSurge: 1
+```
 
-**Riesgo**
+Se forzó un nuevo rollout modificando una anotación del Pod template y se observó el reemplazo progresivo de las réplicas.
 
-Un pod con fuga de memoria puede consumir todos los recursos del nodo y derribar otros workloads. En un nodo de un solo control-plane como este clúster, eso derriba k3s completo.
+Durante el proceso Kubernetes creó las nuevas réplicas antes de retirar las anteriores, manteniendo disponibilidad del servicio.
 
-**Corrección**
+**Captura**
 
-Se definieron `requests` y `limits` tanto para el backend como para PostgreSQL:
+![Rolling update de los Pods](./screenshots/11-rolling-update.png)
+
+---
+
+## Evidencia 12 — Rolling update sin caída
+
+Durante el rollout se mantuvo un health check continuo contra:
+
+```text
+http://localhost:30080/api/health/
+```
+
+Las solicitudes continuaron respondiendo:
+
+```text
+200
+200
+200
+200
+...
+```
+
+sin interrupciones durante la actualización.
+
+Esto demuestra que el rolling update se realizó sin caída del servicio.
+
+**Captura**
+
+![Health check continuo durante el rollout](./screenshots/12-no-downtime.png)
+
+---
+
+## Evidencia 13 — Service interno de PostgreSQL
+
+PostgreSQL se expone únicamente dentro del clúster mediante:
+
+```text
+postgres-svc
+```
+
+El backend utiliza este Service para conectarse a la base de datos.
+
+También se verificó que el endpoint interno apuntara correctamente al Pod `postgres-0`.
+
+**Captura**
+
+![Service interno de PostgreSQL](./screenshots/13-svc-postgres.png)
+
+---
+
+# 5. Configuración y seguridad
+
+## Configuración externalizada
+
+La configuración fue separada según su sensibilidad:
+
+```text
+ConfigMap
+├── DJANGO_DEBUG
+├── DJANGO_ALLOWED_HOSTS
+├── POSTGRES_DB
+├── POSTGRES_HOST
+└── POSTGRES_PORT
+
+Secret
+├── DJANGO_SECRET_KEY
+├── POSTGRES_USER
+└── POSTGRES_PASSWORD
+```
+
+Los valores reales del Secret no se encuentran versionados en el repositorio.
+
+---
+
+## Imagen inmutable
+
+El Deployment utiliza:
+
+```text
+docker.io/juanpablomc/ihungo-backend:sha-6568187
+```
+
+en lugar de una etiqueta mutable como `latest`.
+
+Esto permite relacionar el despliegue con un commit concreto.
+
+---
+
+## Ejecución como usuario no root
+
+El backend se ejecuta con:
+
+```text
+UID: 999
+GID: 999
+```
+
+correspondientes a:
+
+```text
+appuser
+appgroup
+```
+
+El init container de PostgreSQL utiliza:
+
+```text
+UID: 70
+GID: 70
+```
+
+correspondientes al usuario `postgres` de `postgres:16-alpine`.
+
+---
+
+## Probes
+
+El Deployment implementa:
+
+- `readinessProbe`
+- `livenessProbe`
+
+sobre:
+
+```text
+/api/health/
+```
+
+Las probes incluyen:
+
+```yaml
+httpHeaders:
+  - name: Host
+    value: localhost
+```
+
+porque Django valida el `Host` recibido contra `DJANGO_ALLOWED_HOSTS`.
+
+Esto evita utilizar un `ALLOWED_HOSTS=*` únicamente para permitir las IP dinámicas internas de los Pods.
+
+---
+
+## Recursos
+
+El backend define:
 
 ```yaml
 resources:
@@ -613,43 +789,239 @@ resources:
     memory: "512Mi"
 ```
 
-**Archivo:** `deployment.yaml`, `postgres.yaml`
+De esta manera Kubernetes puede planificar los Pods con recursos conocidos y limitar su consumo máximo.
 
 ---
 
-### FIX-6 — Imagen con etiqueta mutable (`latest` o `main`)
+# 6. Defectos identificados y corregidos — DevOps 3
 
-**Problema**
+La definición de referencia contenía defectos intencionales. Se corrigieron los siguientes.
 
-Los manifiestos de referencia usan `latest` o una etiqueta de rama como `main`. Ambas son mutables: apuntan a imágenes distintas en momentos distintos.
+## FIX-1 — Secret hardcodeado en el Deployment
 
-**Riesgo**
+### Problema
+
+La definición de referencia incluye valores sensibles directamente en el Deployment con valores literales.
+
+### Riesgo
+
+Las credenciales quedan expuestas en el repositorio y acopladas al manifiesto de despliegue.
+
+### Corrección
+
+Las credenciales se movieron a un recurso `Secret` de tipo `Opaque`. El Deployment las consume mediante `secretKeyRef`. Los valores reales se crearon desde CLI con `openssl rand` y no se versionaron en Git.
+
+### Resultado
+
+El Deployment no contiene credenciales. El repositorio no expone secretos reales.
+
+---
+
+## FIX-2 — Ausencia de `readinessProbe`
+
+### Problema
+
+Sin `readinessProbe`, Kubernetes envía tráfico al Pod en cuanto el contenedor arranca, antes de que Django haya completado migraciones e inicialización.
+
+### Riesgo
+
+Los primeros requests reciben errores 502/503 porque la aplicación aún no está lista para atender tráfico.
+
+### Corrección
+
+Se agregó `readinessProbe` sobre el endpoint real del proyecto `/api/health/` con `initialDelaySeconds: 15` y `failureThreshold: 3`.
+
+### Resultado
+
+El Service solo enruta tráfico a Pods que Kubernetes considera preparados.
+
+---
+
+## FIX-3 — Ausencia de `requests` y `limits` de recursos
+
+### Problema
+
+Los manifiestos de referencia no definen `resources`. Kubernetes no puede planificar correctamente los Pods ni proteger el nodo.
+
+### Riesgo
+
+Un Pod con fuga de memoria puede consumir todos los recursos del nodo y derribar otros workloads o el propio control-plane de k3s.
+
+### Corrección
+
+Se definieron `requests` y `limits` de CPU y memoria tanto para el backend como para PostgreSQL:
+
+```yaml
+resources:
+  requests:
+    cpu: "100m"
+    memory: "256Mi"
+  limits:
+    cpu: "500m"
+    memory: "512Mi"
+```
+
+### Resultado
+
+Kubernetes puede planificar los Pods con recursos conocidos y limitar su consumo máximo.
+
+---
+
+## FIX-4 — Uso de etiqueta de imagen mutable
+
+### Problema
+
+Los manifiestos de referencia usan `latest` o una etiqueta de rama como `main`. Ambas son mutables y apuntan a imágenes distintas en momentos distintos.
+
+### Riesgo
 
 No hay trazabilidad entre el manifiesto y el código que realmente está corriendo. Un redeploy puede traer una versión diferente sin cambiar el YAML.
 
-**Corrección**
+### Corrección
 
-Se usa la etiqueta inmutable `sha-6568187`, que corresponde al SHA del commit que generó la imagen. Se combina con `imagePullPolicy: IfNotPresent` para coherencia con etiquetas fijas.
+El Deployment utiliza la etiqueta inmutable `sha-6568187` combinada con `imagePullPolicy: IfNotPresent`.
 
-**Archivo:** `deployment.yaml`
+### Resultado
+
+La versión desplegada queda asociada a un commit concreto y es reproducible.
 
 ---
 
-### FIX-7 — Variables de entorno hardcodeadas en el Deployment
+## FIX-5 — Configuración de entorno hardcodeada en el Deployment
 
-**Problema**
+### Problema
 
-Los manifiestos de referencia definen variables de entorno directamente en el Deployment con valores literales, incluyendo credenciales.
+Los manifiestos de referencia definen variables de entorno con valores literales directamente en el Deployment, incluyendo configuración y credenciales mezcladas.
 
-**Riesgo**
+### Riesgo
 
 Duplicación de configuración, credenciales expuestas en el manifiesto y acoplamiento entre el Deployment y los valores de entorno.
 
-**Corrección**
+### Corrección
 
-Todas las variables se inyectan desde fuentes externas:
+Toda la configuración se inyecta desde fuentes externas:
 
-- Configuración no sensible → `configMapKeyRef` apuntando a `ihungo-config`
+- Valores no sensibles → `configMapKeyRef` apuntando a `ihungo-config`
 - Credenciales → `secretKeyRef` apuntando a `ihungo-secret`
 
-**Archivo:** `deployment.yaml`
+### Resultado
+
+El Deployment no contiene valores de configuración ni credenciales. El entorno puede modificarse sin tocar el manifiesto.
+
+---
+
+# 7. Problemas encontrados durante la implementación
+
+Durante la puesta en marcha se identificaron y resolvieron varios problemas reales.
+
+## Init container y `runAsNonRoot`
+
+El init container basado en:
+
+```text
+postgres:16-alpine
+```
+
+no pudo iniciar inicialmente debido a la política:
+
+```text
+runAsNonRoot: true
+```
+
+Se verificó el usuario real de la imagen:
+
+```text
+uid=70(postgres)
+gid=70(postgres)
+```
+
+y se configuró explícitamente:
+
+```yaml
+runAsUser: 70
+runAsGroup: 70
+runAsNonRoot: true
+```
+
+---
+
+## Backend y usuario no numérico
+
+La imagen del backend define:
+
+```text
+USER appuser
+```
+
+Kubernetes no podía comprobar automáticamente que un usuario definido por nombre fuera no-root.
+
+Se verificó la imagen:
+
+```text
+uid=999(appuser)
+gid=999(appgroup)
+```
+
+y se configuró explícitamente:
+
+```yaml
+runAsUser: 999
+runAsGroup: 999
+runAsNonRoot: true
+```
+
+---
+
+## Probes y Django `ALLOWED_HOSTS`
+
+Las probes devolvían:
+
+```text
+HTTP 400
+```
+
+porque Django recibía la IP dinámica del Pod como Host.
+
+Se corrigió mediante:
+
+```yaml
+httpHeaders:
+  - name: Host
+    value: localhost
+```
+
+Después de la corrección las dos réplicas alcanzaron:
+
+```text
+1/1 Running
+```
+
+sin reinicios.
+
+---
+
+# 8. Resultado DevOps 3
+
+Se verificó correctamente:
+
+- k3s local funcionando;
+- nodo en estado `Ready`;
+- namespace dedicado;
+- configuración externalizada;
+- Secret separado de ConfigMap;
+- valores sensibles reales fuera de Git;
+- PostgreSQL funcionando dentro del clúster;
+- almacenamiento persistente mediante PVC;
+- backend con dos réplicas;
+- imagen con etiqueta inmutable;
+- ejecución como usuario no root;
+- `readinessProbe`;
+- `livenessProbe`;
+- requests y limits;
+- Service `NodePort`;
+- acceso exitoso a `/api/health/`;
+- rolling update;
+- continuidad de respuestas HTTP 200 durante el rollout.
+
+El despliegue quedó operativo y reproducible sobre k3s.
+
