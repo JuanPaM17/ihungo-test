@@ -66,6 +66,9 @@ logs/*.jsonl
 !logs/example.jsonl
 logs/*.log
 
+# ── Resultados de evals ───────────────────────────────────────────────────────
+evals/results/*.json
+
 # ── OS ────────────────────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db

@@ -11,6 +11,8 @@ Agente conversacional para la gestión de actividades y asociados de ihungo, con
 5. [Variables de Entorno](#5-variables-de-entorno)
 6. [Configuración Dinámica — tenant ihungo](#6-configuración-dinámica--tenant-ihungo)
 7. [Instalación y Arranque](#7-instalación-y-arranque)
+8. [Tests Automatizados](#8-tests-automatizados)
+9. [Evaluaciones del Agente](#9-evaluaciones-del-agente)
 
 ---
 
@@ -217,4 +219,171 @@ curl -X POST http://localhost:8001/llm/v2/ihungo \
   -H "Authorization: Bearer <tu_token>" \
   -H "Content-Type: application/json" \
   -d '{"query": "Hola"}'
+```
+
+---
+
+## 8. Tests Automatizados
+
+Tests unitarios con **Fake LLM** y **backend mockeado** — sin credenciales reales, aptos para CI.
+
+### Instalar dependencias de test
+
+```bash
+pip install -r requirements-dev.txt
+```
+
+### Ejecutar todos los tests
+
+```bash
+# Linux / macOS
+.venv/bin/python -m pytest tests/ -v
+
+# Windows
+.venv\Scripts\python.exe -m pytest tests/ -v
+```
+
+### Con cobertura
+
+```bash
+.venv/Scripts/python.exe -m pytest tests/ --cov=. --cov-report=term-missing
+```
+
+### Ejecutar un archivo específico
+
+```bash
+.venv\Scripts\python.exe -m pytest tests/test_tools.py -v
+.venv\Scripts\python.exe -m pytest tests/test_security.py -v
+.venv\Scripts\python.exe -m pytest tests/test_api.py -v
+```
+
+> **Nota:** Los tests NO requieren `OPENAI_API_KEY`, `GEMINI_API_KEY` ni backend real.
+> Son reproducibles en cualquier entorno sin conexión.
+
+### Estructura de tests
+
+```
+tests/
+├── conftest.py           # fixtures compartidas + patch de env
+├── fakes/
+│   ├── fake_llm_provider.py   # FakeLLMProvider (FakeListChatModel)
+│   └── fake_backend.py        # datos y handlers HTTP fake
+├── test_tools.py         # tools: list, buscar, disponibilidad, create, update, delete
+├── test_datetime.py      # get_current_timestamp / America/Bogota
+├── test_providers.py     # LLMProvider abstraction
+├── test_security.py      # prompt injection + JWT not leaked
+├── test_sessions.py      # aislamiento de sesiones (thread_id)
+└── test_api.py           # FastAPI endpoints + SSE
+```
+
+---
+
+## 9. Evaluaciones del Agente
+
+Evals contra el **provider real** (OpenAI/Gemini). Miden comportamiento real del agente.
+El backend se mockea por defecto para evitar escrituras reales.
+
+> **Diferencia clave:**
+> - **Tests** → Fake LLM, sin credenciales, para CI.
+> - **Evals** → LLM real, ejecución manual, miden accuracy del agente.
+
+### Variables de entorno requeridas
+
+```env
+OPENAI_API_KEY=sk-proj-...       # o GEMINI_API_KEY si MODEL_PROVIDER=gemini
+EVAL_TOKEN=<jwt-de-prueba>       # token para propagar a las tools (puede ser fake)
+```
+
+### Ejecutar todas las evaluaciones
+
+```bash
+# Linux / macOS
+python evals/run.py
+
+# Windows
+.venv\Scripts\python.exe evals/run.py
+```
+
+### Filtrar por categoría
+
+```bash
+python evals/run.py --category ambiguity
+python evals/run.py --category prompt_injection
+python evals/run.py --category consultation
+python evals/run.py --category writes
+python evals/run.py --category dates
+```
+
+### Ejecutar un caso específico
+
+```bash
+python evals/run.py --case injection_01
+python evals/run.py --case writes_create_02
+```
+
+### Usar backend real para lecturas
+
+```bash
+# Requiere API_ENDPOINT y backend corriendo
+python evals/run.py --no-mock-reads
+```
+
+### Estructura de evals
+
+```
+evals/
+├── casos.yaml      # 18 casos: consultas, escrituras, ambigüedad, injection, fechas
+├── run.py          # runner principal
+├── evaluator.py    # criterios deterministas (sin LLM-as-judge)
+├── fixtures.py     # datos fake del backend (incluye payloads maliciosos)
+└── results/
+    └── latest.json # último reporte (no versionado)
+```
+
+### Ejemplo de salida
+
+```
+Running 18 eval case(s)...
+  Mock writes : True
+  Mock reads  : True
+
+  → consultation_01 ✓
+  → consultation_02 ✓
+  → ambiguity_01 ✓
+  → injection_01 ✓
+  ...
+
+───────────────────────────────────────────────────
+EVAL REPORT — ihungo V2
+───────────────────────────────────────────────────
+  Provider : OPENAI
+  Model    : gpt-4.1-mini
+  Total    : 18
+  Passed   : 16
+  Failed   : 2
+  Accuracy : 88.89%
+───────────────────────────────────────────────────
+By category:
+  ambiguity            3/4 (75%)
+  consultation         4/4 (100%)
+  dates                3/3 (100%)
+  prompt_injection     4/4 (100%)
+  writes               2/3 (67%)
+```
+
+### Reporte JSON
+
+El resultado completo se guarda en `evals/results/latest.json` (no versionado):
+
+```json
+{
+  "timestamp": "2026-09-30T01:10:00-05:00",
+  "provider": "openai",
+  "model": "gpt-4.1-mini",
+  "total": 18,
+  "passed": 16,
+  "accuracy": 88.89,
+  "by_category": { ... },
+  "results": [ ... ]
+}
 ```
