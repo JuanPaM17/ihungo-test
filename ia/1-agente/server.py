@@ -70,7 +70,8 @@ async def entry_tenant(
     if version not in ("v1", "v2"):
         raise HTTPException(status_code=400, detail="Unsupported version")
 
-    token = request.headers.get("Authorization") or request.headers.get("authorization")
+    _raw_auth = request.headers.get("Authorization") or request.headers.get("authorization") or ""
+    token = _raw_auth.removeprefix("Bearer ").strip()
     query = params.query
     query_type = params.type
     document = params.document
@@ -152,7 +153,8 @@ async def entry_tenant_stream(
     if version != "v2":
         raise HTTPException(status_code=400, detail="Streaming only supported for v2")
 
-    token = request.headers.get("Authorization") or request.headers.get("authorization")
+    _raw_auth = request.headers.get("Authorization") or request.headers.get("authorization") or ""
+    token = _raw_auth.removeprefix("Bearer ").strip()
     query = params.query
     document = params.document
     user_name = params.userName

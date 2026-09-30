@@ -151,7 +151,10 @@ async def get_all_available_tools() -> list:
             list_actividades, create_actividad, update_actividad, delete_actividad,
             consultar_disponibilidad,
         )
-        from tools.asociados.asociados_tool import list_asociados, buscar_asociados
+        from tools.asociados.asociados_tool import (
+            list_asociados, buscar_asociados,
+            obtener_asociado, crear_asociado, actualizar_asociado, eliminar_asociado,
+        )
         # Agregar todas las herramientas
         tools.extend(
             [
@@ -164,6 +167,10 @@ async def get_all_available_tools() -> list:
                 consultar_disponibilidad,
                 list_asociados,
                 buscar_asociados,
+                obtener_asociado,
+                crear_asociado,
+                actualizar_asociado,
+                eliminar_asociado,
             ]
         )
 

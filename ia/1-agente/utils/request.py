@@ -72,7 +72,8 @@ class ApiRequestManager:
         url = self._api_endpoint.rstrip("/") + "/" + endpoint.lstrip("/")
         logger.info("-- MAKE REQUEST --")
         logger.info("URL API: %s", url)
-        logger.info("HEADERS: %s", headers)
+        _safe_headers = {k: ("[REDACTED]" if k.lower() == "authorization" else v) for k, v in (headers or {}).items()}
+        logger.info("HEADERS: %s", _safe_headers)
 
         if query_params is None:
             query_params = {}
