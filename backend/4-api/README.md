@@ -155,8 +155,11 @@ docker compose exec web python manage.py createsuperuser
 | POST | `/api/auth/token/` | No | Obtener JWT |
 | POST | `/api/auth/token/refresh/` | No | Refrescar JWT |
 | POST | `/api/registro/` | No | Solicitud pública de registro |
-| GET | `/api/asociados/` | JWT | Listar asociados |
+| GET | `/api/asociados/` | JWT | Listar asociados (con filtros opcionales) |
 | POST | `/api/asociados/` | JWT Admin | Crear asociado |
+| GET | `/api/asociados/{id}/` | JWT | Obtener detalle de un asociado |
+| PATCH | `/api/asociados/{id}/` | JWT Admin | Actualizar parcialmente un asociado |
+| DELETE | `/api/asociados/{id}/` | JWT Admin | Eliminar asociado |
 | GET | `/api/actividades/` | JWT | Listar actividades |
 | POST | `/api/actividades/` | JWT Admin | Crear actividad |
 | PATCH | `/api/actividades/{id}/` | JWT | Actualizar actividad |
@@ -230,6 +233,40 @@ curl -X POST http://localhost/api/actividades/ \
   }'
 ```
 
+### Crear asociado (admin)
+
+```bash
+curl -X POST http://localhost/api/asociados/ \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "nuevo@example.com",
+    "password": "segura1234",
+    "identification": "123456789",
+    "first_name": "Nuevo",
+    "last_name": "Asociado",
+    "city": "Bogotá"
+  }'
+```
+
+### Actualizar asociado (admin)
+
+```bash
+curl -X PATCH http://localhost/api/asociados/1/ \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"city": "Medellín"}'
+```
+
+### Eliminar asociado (admin)
+
+```bash
+curl -X DELETE http://localhost/api/asociados/1/ \
+  -H "Authorization: Bearer <token>"
+```
+
+> Si el asociado tiene actividades asociadas, devuelve `409` con `{"code": "HAS_ACTIVITIES", "detail": "..."}`. Elimina primero las actividades.
+
 ### Solicitud pública de registro
 
 ```bash
@@ -288,6 +325,7 @@ curl -X POST http://localhost/api/carga-masiva/asociados/ \
 - No pueden existir dos actividades con fechas solapadas para el mismo asociado (409).
 - Las actividades pasadas son de solo lectura para asociados (403).
 - La carga masiva procesa cada fila independientemente: las filas válidas se crean aunque otras fallen.
+- No se puede eliminar un asociado que tenga actividades asociadas (409 `HAS_ACTIVITIES`). Se deben eliminar primero sus actividades.
 - Una solicitud de registro inicia siempre en estado `pendiente`.
 - No se puede aprobar o rechazar una solicitud que no esté pendiente.
 - Al aprobar una solicitud se crea automáticamente el usuario y el perfil de asociado.
@@ -304,7 +342,11 @@ curl -X POST http://localhost/api/carga-masiva/asociados/ \
 | Modificar actividad pasada | Sí | 403 | 403 | 401 |
 | Eliminar actividad | Sí | Solo futuras propias | 403 | 401 |
 | Listar asociados | Sí | Sí | Sí | 401 |
+| Ver detalle asociado | Sí | Sí | Sí | 401 |
 | Crear asociado | Sí | 403 | 403 | 401 |
+| Modificar asociado | Sí | 403 | 403 | 401 |
+| Eliminar asociado (sin actividades) | Sí | 403 | 403 | 401 |
+| Eliminar asociado (con actividades) | 409 | 403 | 403 | 401 |
 | Carga masiva | Sí | 403 | 403 | 401 |
 | Solicitud de registro | — | — | — | Público |
 
@@ -361,7 +403,7 @@ No se diseñaron jerarquías de herencia para servicios. En un proyecto mayor, u
 ### I — Interface Segregation Principle
 
 - Las vistas de carga masiva declaran explícitamente `parser_classes = [MultiPartParser]` en lugar de heredar el parser global. Cada vista expone solo los parsers que necesita.
-- `AsociadoViewSet` implementa solo `ListModelMixin` y `CreateModelMixin`. No expone `update` ni `destroy`, que no forman parte del contrato del enunciado.
+- `AsociadoViewSet` declara explícitamente los mixins que necesita (`List`, `Create`, `Retrieve`, `Update`, `Destroy`). Los permisos de escritura (`IsAdmin`) se separan de los de lectura (`IsAuthenticated`) en `get_permissions()`, sin que un cambio en unos afecte a los otros.
 - `ActivityViewSet` excluye `RetrieveModelMixin` porque el enunciado no requiere `GET /actividades/{id}/`.
 
 ### D — Dependency Inversion Principle
@@ -383,12 +425,12 @@ docker compose exec web pytest
 
 | Métrica | Valor |
 |---|---|
-| Total de tests | 85 |
-| Tests pasando | 85 |
-| Cobertura total | 91% |
+| Total de tests | ~98 |
+| Tests pasando | ~98 |
+| Cobertura total | ≥91% |
 | Umbral mínimo | 80% |
 
-Los tests cubren: autenticación, permisos, creación/modificación/eliminación de actividades, validación de fechas, solapamientos, solicitudes de registro, carga masiva CSV/XLSX, endpoints OpenAPI y healthcheck.
+Los tests cubren: autenticación, permisos, creación/modificación/eliminación de actividades, validación de fechas, solapamientos, CRUD completo de asociados (retrieve/create/update/delete con permisos admin y caso 409 por actividades protegidas), solicitudes de registro, carga masiva CSV/XLSX, endpoints OpenAPI y healthcheck.
 
 ### TDD visible en el historial
 

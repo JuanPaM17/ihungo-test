@@ -1,0 +1,15 @@
+meta {
+  name: Eliminar Asociado
+  type: http
+  seq: 6
+}
+
+delete {
+  url: {{BASE_URL}}/api/asociados/1/
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{TOKEN}}
+}

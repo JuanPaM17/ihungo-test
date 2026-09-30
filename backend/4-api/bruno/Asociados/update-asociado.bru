@@ -1,0 +1,25 @@
+meta {
+  name: Actualizar Asociado
+  type: http
+  seq: 5
+}
+
+patch {
+  url: {{BASE_URL}}/api/asociados/1/
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{TOKEN}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "city": "Medellín"
+  }
+}
