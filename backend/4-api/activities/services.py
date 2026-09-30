@@ -1,6 +1,5 @@
 
 from django.utils.dateparse import parse_datetime
-from django.utils import timezone
 
 from activities.models import Activity
 from users.models import Asociado, User

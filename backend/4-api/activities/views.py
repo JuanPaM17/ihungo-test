@@ -8,7 +8,7 @@ from activities.models import Activity
 from activities.permissions import ActivityPermission
 from activities.serializers import ActivityReadSerializer, ActivityWriteSerializer
 from activities.services import ActivityValidationError, check_availability
-from users.models import Asociado, User
+from users.models import User
 
 
 class ActivityViewSet(
@@ -125,7 +125,7 @@ class ActivityViewSet(
             )
         except (ValueError, TypeError):
             return Response(
-                {"error": {"code": "INVALID_PARAMS", "message": "Parámetros inválidos. Verifica el formato de las fechas y el asociado_id."}},
+                {"error": {"code": "INVALID_PARAMS", "message": "Parámetros inválidos."}},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 

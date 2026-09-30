@@ -6,7 +6,6 @@ from users.models import Asociado
 from users.serializers import AsociadoSerializer
 
 
-
 class AsociadoViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, viewsets.GenericViewSet):
     serializer_class = AsociadoSerializer
     permission_classes = [IsAuthenticated]
