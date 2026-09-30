@@ -1,0 +1,23 @@
+meta {
+  name: Solicitar Registro
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{BASE_URL}}/api/registro/
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "first_name": "Juan",
+    "last_name": "Pérez",
+    "email": "juan.perez@ejemplo.com"
+  }
+}

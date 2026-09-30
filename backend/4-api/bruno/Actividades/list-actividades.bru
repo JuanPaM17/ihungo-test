@@ -1,0 +1,20 @@
+meta {
+  name: Listar Actividades
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{BASE_URL}}/api/actividades/
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{TOKEN}}
+}
+
+params:query {
+  ~desde: 2025-01-01T00:00:00
+  ~hasta: 2025-12-31T23:59:59
+}

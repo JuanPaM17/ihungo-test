@@ -1,0 +1,29 @@
+meta {
+  name: Crear Actividad
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{BASE_URL}}/api/actividades/
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{TOKEN}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "activity_type": "meeting",
+    "description": "Reunión de seguimiento mensual",
+    "start_datetime": "2025-07-15T09:00:00",
+    "end_datetime": "2025-07-15T10:00:00",
+    "asociado": 1
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "name": "ihungo Backend 4 API",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}

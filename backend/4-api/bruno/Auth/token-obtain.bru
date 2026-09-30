@@ -1,0 +1,25 @@
+meta {
+  name: Token Obtain
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{BASE_URL}}/api/auth/token/
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "email": "admin@ihungo.com",
+    "password": "admin123"
+  }
+}
+
+script:post-response {
+  if (res.status === 200) {
+    bru.setEnvVar("TOKEN", res.body.access);
+    bru.setEnvVar("REFRESH_TOKEN", res.body.refresh);
+  }
+}
