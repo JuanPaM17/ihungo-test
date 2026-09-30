@@ -1,0 +1,38 @@
+{
+    "dynamic_agents": {
+        "greeting_agent": {
+            "prompt_path": "greeting_agent.md",
+            "llm_model": "gpt-4.1-mini",
+            "recursion_limit": 1
+        },
+        "actividades_agent": {
+            "agent_type": "react",
+            "prompt_path": "actividades_agent.md",
+            "tool_names": [
+                "list_actividades",
+                "create_actividad",
+                "update_actividad",
+                "delete_actividad",
+                "list_asociados",
+                "get_datetime"
+            ],
+            "llm_model": "gpt-4.1-mini",
+            "recursion_limit": 5
+        }
+    },
+    "supervisor_config": {
+        "supervisor": {
+            "prompt_path": "supervisor_prompt.md",
+            "llm_model": "gpt-4.1-mini",
+            "description": "Primary supervisor for ihungo users",
+            "agent_names": [
+                "greeting_agent",
+                "actividades_agent"
+            ],
+            "handoff_descriptions": {
+                "greeting_agent": "Use for initial greetings and displaying the list of available services.",
+                "actividades_agent": "Use for ANY query about actividades or asociados: listing, creating, updating, or deleting activities, and listing asociados. Examples: 'muéstrame las actividades', 'crea una actividad', 'elimina la actividad 3', '¿quiénes son los asociados?'."
+            }
+        }
+    }
+}

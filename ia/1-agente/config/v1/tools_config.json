@@ -1,0 +1,103 @@
+{
+  "agent": {
+    "description": "Eres el asistente virtual de ihungo. Solo debes usar las herramientas disponibles para responder. Si la herramienta no existe o no tienes suficiente información, dilo claramente. No accedas a internet ni inventes información. Al saludar, preséntate como el asistente de ihungo y menciona que puedes ayudar con actividades y asociados."
+  },
+  "tools": {
+    "list_actividades": {
+      "module": "tools.actividades.actividades_tool",
+      "class": "list_actividades",
+      "description": "Obtiene la lista de actividades registradas. Permite filtrar por fecha de inicio (`desde`) y fecha de fin (`hasta`) en formato ISO 8601. Muestra la información relevante en bulletpoints.",
+      "fields": {
+        "desde": {
+          "type": "str",
+          "description": "Fecha/datetime de inicio del rango (ISO 8601). Ejemplo: 2025-01-01"
+        },
+        "hasta": {
+          "type": "str",
+          "description": "Fecha/datetime de fin del rango (ISO 8601). Ejemplo: 2025-12-31"
+        }
+      }
+    },
+    "create_actividad": {
+      "module": "tools.actividades.actividades_tool",
+      "class": "create_actividad",
+      "description": "Crea una nueva actividad en el sistema. Requiere tipo, fechas de inicio y fin, e ID del asociado. Devuelve los datos de la actividad creada.",
+      "fields": {
+        "activity_type": {
+          "type": "str",
+          "description": "Tipo de actividad: workshop, seminar, meeting, training, other"
+        },
+        "start_datetime": {
+          "type": "str",
+          "description": "Fecha y hora de inicio (ISO 8601). Ejemplo: 2025-03-10T09:00:00Z"
+        },
+        "end_datetime": {
+          "type": "str",
+          "description": "Fecha y hora de fin (ISO 8601). Ejemplo: 2025-03-10T11:00:00Z"
+        },
+        "asociado": {
+          "type": "int",
+          "description": "ID numérico del asociado al que pertenece la actividad"
+        },
+        "description": {
+          "type": "str",
+          "description": "Descripción o notas adicionales (opcional)"
+        }
+      }
+    },
+    "update_actividad": {
+      "module": "tools.actividades.actividades_tool",
+      "class": "update_actividad",
+      "description": "Modifica parcialmente una actividad existente. Solo se envían los campos que deben cambiar.",
+      "fields": {
+        "actividad_id": {
+          "type": "int",
+          "description": "ID numérico de la actividad a modificar"
+        },
+        "activity_type": {
+          "type": "str",
+          "description": "Nuevo tipo de actividad (opcional)"
+        },
+        "start_datetime": {
+          "type": "str",
+          "description": "Nueva fecha y hora de inicio (ISO 8601, opcional)"
+        },
+        "end_datetime": {
+          "type": "str",
+          "description": "Nueva fecha y hora de fin (ISO 8601, opcional)"
+        },
+        "asociado": {
+          "type": "int",
+          "description": "Nuevo ID del asociado (opcional)"
+        },
+        "description": {
+          "type": "str",
+          "description": "Nueva descripción (opcional)"
+        }
+      }
+    },
+    "delete_actividad": {
+      "module": "tools.actividades.actividades_tool",
+      "class": "delete_actividad",
+      "description": "Elimina permanentemente una actividad del sistema. Siempre confirmar con el usuario antes de ejecutar.",
+      "fields": {
+        "actividad_id": {
+          "type": "int",
+          "description": "ID numérico de la actividad a eliminar"
+        }
+      }
+    },
+    "list_asociados": {
+      "module": "tools.asociados.asociados_tool",
+      "class": "list_asociados",
+      "description": "Obtiene la lista de todos los asociados registrados. Devuelve id, email, nombre, apellido y ciudad. Usar para resolver nombres a IDs antes de crear actividades.",
+      "fields": {}
+    },
+    "get_current_datetime": {
+      "module": "tools.utils.datetime_tool",
+      "class": "GetCurrentDatetimeTool",
+      "description": "Devuelve la fecha y hora actual en formato yyyy-MM-dd HH:mm:ss (zona horaria America/Bogota). Usar cuando el usuario mencione fechas relativas como 'hoy', 'mañana', 'esta semana'.",
+      "fields": {}
+    }
+  }
+}

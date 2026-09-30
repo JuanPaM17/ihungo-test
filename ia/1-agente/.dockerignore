@@ -1,0 +1,31 @@
+# Entorno virtual y cache Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+
+# Variables de entorno (nunca al contenedor)
+.env
+
+# Herramientas de desarrollo
+.vscode/
+.idea/
+.claude/
+bruno/
+examples/
+embeedings/
+
+# Git
+.git/
+.gitignore
+
+# Tests
+test_*.py
+
+# Documentación
+README.md
