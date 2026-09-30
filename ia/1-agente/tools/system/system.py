@@ -82,18 +82,29 @@ async def invalidate_cache(
 @tool
 async def get_datetime(
     config: RunnableConfig,
-) -> str:
-    """Gets the current date and time. The returned format is: year-month-day hour:minute:seconds. This tool is necessary when the user requires information about the date or asks about date filters"""
+) -> dict:
+    """
+    Returns the current date and time in America/Bogota timezone as a structured object.
+
+    Use this tool ALWAYS before resolving any relative date expression
+    (hoy, mañana, pasado mañana, próximo lunes, esta semana, etc.).
+    Never calculate dates from your training knowledge — always call this tool first.
+
+    Returned fields:
+    - timezone: always "America/Bogota"
+    - datetime: full ISO 8601 with offset, e.g. "2026-09-30T23:55:00-05:00"
+    - date: "2026-09-30"
+    - time: "23:55:00"
+    - day_of_week: e.g. "Wednesday"
+    - utc_offset: e.g. "-05:00"
+    """
     logger.debug("GET_DATETIME")
-    metadata = config.get('metadata')
-    if metadata is None:
-        raise ValueError("metadata is None")
-    logger.debug(metadata)
-    tenant_id = metadata.get("tenant_id")
-    token = metadata.get("token")
-    logger.debug(f"{tenant_id} {token}")
+    configurable = config.get("configurable") or {}
+    tenant_id = configurable.get("tenant_id")
+    token = configurable.get("token")
+    logger.debug(f"{tenant_id}")
     if not tenant_id or not token:
-        raise ValueError("tenant_id and token must be provided in the config.metadata!")
+        raise ValueError("tenant_id and token must be provided in config.configurable")
 
     results = await SystemTool.get_datetime(tenant_id=tenant_id, token=token)
     return results

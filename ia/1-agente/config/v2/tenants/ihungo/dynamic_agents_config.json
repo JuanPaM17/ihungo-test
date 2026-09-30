@@ -2,7 +2,7 @@
     "dynamic_agents": {
         "greeting_agent": {
             "prompt_path": "greeting_agent.md",
-            "llm_model": "gpt-4.1-mini",
+            "llm_model": "default",
             "recursion_limit": 1
         },
         "actividades_agent": {
@@ -13,17 +13,19 @@
                 "create_actividad",
                 "update_actividad",
                 "delete_actividad",
+                "consultar_disponibilidad",
                 "list_asociados",
+                "buscar_asociados",
                 "get_datetime"
             ],
-            "llm_model": "gpt-4.1-mini",
+            "llm_model": "default",
             "recursion_limit": 5
         }
     },
     "supervisor_config": {
         "supervisor": {
             "prompt_path": "supervisor_prompt.md",
-            "llm_model": "gpt-4.1-mini",
+            "llm_model": "default",
             "description": "Primary supervisor for ihungo users",
             "agent_names": [
                 "greeting_agent",

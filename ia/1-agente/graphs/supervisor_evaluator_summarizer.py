@@ -188,6 +188,7 @@ async def instantiate_supervisor_anonymous(available_llms, tenant_id, state: dic
 async def evaluator_node(
     state: EvaluatorState,
     tenant_id=None,
+    evaluator_model=None,
 ) -> Command[Literal["supervisor", "supervisor_anon", END]]:
     # Obtener prompt dinámico para el evaluador desde S3
     evaluator_prompt = None
@@ -216,7 +217,7 @@ async def evaluator_node(
 
     evaluator = create_async_llm_as_judge(
         prompt=evaluator_prompt,
-        model="gpt-4.1-mini",
+        judge=evaluator_model,
     )
     # Prepare inputs and outputs for the evaluator
     # Here, we assume the last HumanMessage is the input, and the last AIMessage is the output
@@ -304,11 +305,14 @@ async def create_graph(
     try:
         workflow = StateGraph(EvaluatorState)
 
+        evaluator_model = available_llms.get("evaluator") or available_llms.get("default")
+        summarizer_model = available_llms.get("default")
+
         async def evaluator(state):
-            return await evaluator_node(state, tenant_id)
+            return await evaluator_node(state, tenant_id, evaluator_model)
 
         summarizer = await create_summarizer_node(
-            available_llms["gpt-4.1-mini"], tenant_id
+            summarizer_model, tenant_id
         )
 
         # Nodes

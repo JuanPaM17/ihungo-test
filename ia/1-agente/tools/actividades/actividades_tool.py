@@ -58,6 +58,20 @@ class ActividadTool(BaseToolConfigManager):
         )
 
     @classmethod
+    async def get_disponibilidad(cls, tenant_id: str, token: str, params: dict) -> dict:
+        tenant_config = await cls.get_tenant(tenant_id)
+        basic_headers, _ = (
+            tenant_config["_api_request_manager"].build_basic_info(token).values()
+        )
+        return await tenant_config["_api_request_manager"].make_request(
+            method=HTTPMethod.GET,
+            endpoint=f"{cls._BASE_URL}/disponibilidad",
+            headers=basic_headers,
+            query_params=params,
+            body_params=None,
+        )
+
+    @classmethod
     async def delete_actividad(cls, tenant_id: str, token: str, actividad_id: int) -> dict:
         tenant_config = await cls.get_tenant(tenant_id)
         basic_headers, _ = (
@@ -230,3 +244,42 @@ async def delete_actividad(
     """
     tenant_id, token = _get_metadata(config)
     return await ActividadTool.delete_actividad(tenant_id=tenant_id, token=token, actividad_id=actividad_id)
+
+
+# ── Disponibilidad ────────────────────────────────────────────────────────────
+
+@tool
+async def consultar_disponibilidad(
+    config: RunnableConfig,
+    fecha_inicio: Annotated[str, Field(description="Inicio del rango a consultar (ISO 8601). Ejemplo: 2025-03-15T09:00:00Z")],
+    fecha_fin: Annotated[str, Field(description="Fin del rango a consultar (ISO 8601). Ejemplo: 2025-03-15T11:00:00Z")],
+    asociado_id: Annotated[Optional[int], Field(description="ID numérico del asociado específico. Si se omite, se evalúan todos los asociados.")] = None,
+) -> dict:
+    """
+    Consulta la disponibilidad de uno o todos los asociados en un rango de tiempo.
+
+    Delega al backend el cálculo de solapamientos. Un asociado está DISPONIBLE si no
+    tiene ninguna actividad cuyo rango se solape con el rango solicitado.
+
+    Parámetros:
+    - fecha_inicio: inicio del rango (requerido, ISO 8601).
+    - fecha_fin: fin del rango (requerido, ISO 8601).
+    - asociado_id: ID de asociado específico (opcional). Sin él, evalúa todos.
+
+    Respuesta:
+    - rango: { inicio, fin }
+    - resumen: { libres: N, ocupados: N }
+    - asociados: [{ id, nombre, email, estado: "libre"|"ocupado", actividades_bloqueantes }]
+
+    Ejemplos de consulta:
+    - "¿Quién está disponible mañana de 9 a 11?"
+    - "¿Juan Pérez está libre el viernes a las 2pm?"
+    - "¿Qué asociados están disponibles el lunes de 10 a 12?"
+    """
+    tenant_id, token = _get_metadata(config)
+
+    params = {"fecha_inicio": fecha_inicio, "fecha_fin": fecha_fin}
+    if asociado_id is not None:
+        params["asociado_id"] = str(asociado_id)
+
+    return await ActividadTool.get_disponibilidad(tenant_id=tenant_id, token=token, params=params)

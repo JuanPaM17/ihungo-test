@@ -1,6 +1,6 @@
 {
   "agent": {
-    "description": "Eres el asistente virtual de ihungo. Solo debes usar las herramientas disponibles para responder. Si la herramienta no existe o no tienes suficiente información, dilo claramente. No accedas a internet ni inventes información. Al saludar, preséntate como el asistente de ihungo y menciona que puedes ayudar con actividades y asociados."
+    "description": "Eres el asistente virtual de ihungo. Solo debes usar las herramientas disponibles para responder. Si la herramienta no existe o no tienes suficiente información, dilo claramente. No accedas a internet ni inventes información. Al saludar, preséntate como el asistente de ihungo y menciona que puedes ayudar con: actividades (listar, crear, actualizar, eliminar), asociados (listar y buscar por nombre, email o ciudad) y disponibilidad (consultar qué asociados están libres en un horario). Cuando el usuario mencione un asociado por nombre, usa buscar_asociados para encontrar su ID antes de operar. Nunca muestres IDs internos al usuario. Usa get_current_datetime cuando el usuario use fechas relativas como 'hoy', 'mañana' o 'esta semana'. REGLA CRÍTICA DE CONFIRMACIÓN: Nunca ejecutes create_actividad, update_actividad ni delete_actividad sin confirmación explícita del usuario. El flujo obligatorio es: (1) reúne todos los datos necesarios, (2) muestra un resumen de la operación con todos los detalles, (3) pide confirmación explícita al usuario, (4) espera que el usuario responda 'sí', 'confirmo' o equivalente, (5) solo entonces llama la herramienta. Para CREATE muestra: tipo, asociado, fechas, descripción. Para UPDATE muestra: qué campo cambia y de qué valor a qué valor. Para DELETE muestra: todos los datos de la actividad y advierte que es irreversible. Si el usuario dice 'no' o cancela, no ejecutes la operación."
   },
   "tools": {
     "list_actividades": {
@@ -90,8 +90,50 @@
     "list_asociados": {
       "module": "tools.asociados.asociados_tool",
       "class": "list_asociados",
-      "description": "Obtiene la lista de todos los asociados registrados. Devuelve id, email, nombre, apellido y ciudad. Usar para resolver nombres a IDs antes de crear actividades.",
+      "description": "Obtiene la lista de todos los asociados registrados. Devuelve id, email, nombre, apellido y ciudad. Usar para listados generales. Para búsquedas por nombre/email/ciudad usar buscar_asociados.",
       "fields": {}
+    },
+    "buscar_asociados": {
+      "module": "tools.asociados.asociados_tool",
+      "class": "buscar_asociados",
+      "description": "Busca asociados aplicando filtros opcionales (nombre, email, ciudad, identificacion) sobre la lista completa. Devuelve { total, coincidencias, mensaje }. Usar cuando el usuario mencione un asociado por nombre en lugar de por ID.",
+      "fields": {
+        "nombre": {
+          "type": "Optional[str]",
+          "description": "Nombre o apellido parcial (case-insensitive). Ejemplo: 'Juan' o 'Pérez'."
+        },
+        "email": {
+          "type": "Optional[str]",
+          "description": "Email parcial del asociado. Ejemplo: 'juan@'."
+        },
+        "ciudad": {
+          "type": "Optional[str]",
+          "description": "Ciudad parcial del asociado. Ejemplo: 'Bogotá'."
+        },
+        "identificacion": {
+          "type": "Optional[str]",
+          "description": "Número de identificación parcial. Ejemplo: '123456'."
+        }
+      }
+    },
+    "consultar_disponibilidad": {
+      "module": "tools.actividades.actividades_tool",
+      "class": "consultar_disponibilidad",
+      "description": "Consulta la disponibilidad de uno o todos los asociados en un rango de tiempo. Un asociado está disponible si no tiene actividades solapadas en ese rango. Devuelve { rango, resumen: { libres, ocupados }, asociados: [{ id, nombre, estado, actividades_bloqueantes }] }.",
+      "fields": {
+        "fecha_inicio": {
+          "type": "str",
+          "description": "Inicio del rango a consultar (ISO 8601). Ejemplo: 2025-03-15T09:00:00Z"
+        },
+        "fecha_fin": {
+          "type": "str",
+          "description": "Fin del rango a consultar (ISO 8601). Ejemplo: 2025-03-15T11:00:00Z"
+        },
+        "asociado_id": {
+          "type": "Optional[int]",
+          "description": "ID del asociado específico. Si se omite, evalúa todos los asociados."
+        }
+      }
     },
     "get_current_datetime": {
       "module": "tools.utils.datetime_tool",

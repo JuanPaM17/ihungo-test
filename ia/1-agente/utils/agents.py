@@ -149,8 +149,9 @@ async def get_all_available_tools() -> list:
         from tools.system.system import get_datetime, invalidate_cache
         from tools.actividades.actividades_tool import (
             list_actividades, create_actividad, update_actividad, delete_actividad,
+            consultar_disponibilidad,
         )
-        from tools.asociados.asociados_tool import list_asociados
+        from tools.asociados.asociados_tool import list_asociados, buscar_asociados
         # Agregar todas las herramientas
         tools.extend(
             [
@@ -160,7 +161,9 @@ async def get_all_available_tools() -> list:
                 create_actividad,
                 update_actividad,
                 delete_actividad,
+                consultar_disponibilidad,
                 list_asociados,
+                buscar_asociados,
             ]
         )
 

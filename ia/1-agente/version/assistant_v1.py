@@ -4,7 +4,7 @@ import importlib
 from pathlib import Path
 import time
 import logging
-from typing import Dict
+from typing import Dict, Optional
 
 from pydantic import create_model, Field
 from langgraph.graph import START, StateGraph, MessagesState
@@ -34,8 +34,10 @@ def load_tools_from_json(path: str):
 
         params = {}
         for arg, info in conf.get("fields", {}).items():
-            py_type = eval(info["type"])
-            params[arg] = (py_type, Field(..., description=info["description"]))
+            py_type = eval(info["type"], {"Optional": Optional, "str": str, "int": int, "float": float, "bool": bool})
+            is_optional = info["type"].startswith("Optional")
+            default = None if is_optional else ...
+            params[arg] = (py_type, Field(default, description=info["description"]))
         ArgsModel = create_model(f"{name.title()}Params", **params)
 
         # Soporta tanto clases con get_tool() como objetos @tool directos
@@ -121,12 +123,6 @@ async def process_query_v1(
 
 
     messages = [
-        SystemMessage(
-            content=(
-                "🔐 Tu JWT de autorización es:\n"
-                f"{token}\n\n"
-            )
-        ),
         HumanMessage(content=query),
     ]
 
