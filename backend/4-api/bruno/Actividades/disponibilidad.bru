@@ -1,0 +1,48 @@
+meta {
+  name: Consultar Disponibilidad
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{BASE_URL}}/api/actividades/disponibilidad/
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{TOKEN}}
+}
+
+params:query {
+  fecha_inicio: 2026-10-01T09:00:00-05:00
+  fecha_fin: 2026-10-01T11:00:00-05:00
+  ~asociado_id: 1
+}
+
+docs {
+  Consulta la disponibilidad de asociados en un rango de tiempo.
+
+  Un asociado está OCUPADO si tiene alguna actividad con solapamiento real:
+    activity.start_datetime < fecha_fin  AND  activity.end_datetime > fecha_inicio
+
+  Parámetros:
+  - fecha_inicio (requerido): inicio del rango en ISO 8601 con offset. Ej: 2026-10-01T09:00:00-05:00
+  - fecha_fin    (requerido): fin del rango en ISO 8601 con offset.   Ej: 2026-10-01T11:00:00-05:00
+  - asociado_id  (opcional): evalúa solo ese asociado. Sin él, evalúa todos.
+
+  Respuesta:
+  {
+    "rango": { "inicio": "...", "fin": "..." },
+    "resumen": { "libres": N, "ocupados": N },
+    "asociados": [
+      {
+        "id": 1,
+        "nombre": "Juan Pérez",
+        "email": "juan@example.com",
+        "estado": "libre" | "ocupado",
+        "actividades_bloqueantes": [ { id, activity_type, start_datetime, end_datetime, description } ]
+      }
+    ]
+  }
+}

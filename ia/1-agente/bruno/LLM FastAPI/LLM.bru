@@ -13,10 +13,11 @@ post {
 headers {
   Authorization: Bearer {{TOKEN}}
   Content-Type: application/json
+  X-Session-Id: {{SESSION_ID}}
 }
 
 body:json {
-  {"query":"Hpla","language":"es","userName":"Juan","isAnonymous":false}
+  {"query":"Hola","language":"es","userName":"Juan","isAnonymous":false}
 }
 
 vars:pre-request {

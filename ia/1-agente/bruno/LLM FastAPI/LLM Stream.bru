@@ -1,0 +1,76 @@
+meta {
+  name: LLM Stream
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{LLM_URL}}/llm/v2/ihungo/stream
+  body: json
+  auth: inherit
+}
+
+headers {
+  Authorization: Bearer {{TOKEN}}
+  Content-Type: application/json
+  X-Session-Id: {{SESSION_ID}}
+  Cache-Control: no-cache
+}
+
+body:json {
+  {"query":"Hola, qué puedes hacer?","language":"es","userName":"Juan","isAnonymous":false}
+}
+
+vars:pre-request {
+  TOKEN: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTc5MDgyMzI2NywiaWF0IjoxNzkwNzM2ODY3LCJqdGkiOiI0MDU0MDQ2ZjI4Zjg0ZDk0YWY0MTA3NTk2YTYzN2RjYyIsInVzZXJfaWQiOjF9.u-Wrhsa4oQuEk-5Y9qvaB4-WgeeVlYQZl22etloPDP
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+docs {
+  Endpoint de streaming SSE para el asistente V2.
+  Solo disponible para version v2.
+
+  Responde con un stream de eventos Server-Sent Events (SSE).
+
+  Eventos emitidos en orden:
+  - start       → el grafo comienza. Incluye session_id.
+  - routing     → un nodo agente/supervisor fue activado. Incluye node.
+  - tool_start  → una tool está por ejecutarse. Incluye tool (nombre).
+  - tool_end    → la tool terminó. Incluye tool y status (success | error).
+  - token       → fragmento de texto del summarizer (respuesta final). Incluye content.
+  - done        → el grafo terminó. Incluye response (texto completo) y session_id.
+  - error       → error irrecuperable. Incluye type y message.
+
+  Ejemplo de respuesta:
+    event: start
+    data: {"session_id": "test-session-001"}
+
+    event: routing
+    data: {"node": "supervisor"}
+
+    event: routing
+    data: {"node": "greeting_agent"}
+
+    event: token
+    data: {"content": "¡Hola! Puedo ayudarte con "}
+
+    event: token
+    data: {"content": "actividades y asociados."}
+
+    event: done
+    data: {"response": "¡Hola! Puedo ayudarte con actividades y asociados.", "session_id": "test-session-001"}
+
+  Para probarlo con curl (sin buffering):
+    curl -N -X POST "http://localhost:8001/llm/v2/ihungo/stream" \
+      -H "Content-Type: application/json" \
+      -H "Authorization: Bearer <token>" \
+      -H "X-Session-Id: test-session-001" \
+      -d '{"query": "Hola", "isAnonymous": false}'
+
+  Nota: Bruno no renderiza SSE en tiempo real — verás la respuesta completa al terminar.
+  Para ver tokens en vivo usa curl con la flag -N.
+}

@@ -1,0 +1,33 @@
+meta {
+  name: Buscar Asociados
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{BASE_URL}}/api/asociados/
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{TOKEN}}
+}
+
+params:query {
+  ~nombre: Juan
+  ~email: juan@
+  ~ciudad: Bogotá
+  ~identificacion: 123456
+}
+
+docs {
+  Busca asociados filtrando en el backend por nombre (first_name + last_name),
+  email, ciudad o identificacion. Todos los filtros son opcionales y aplican
+  coincidencia parcial case-insensitive (icontains).
+
+  Ejemplos:
+  - ?nombre=Juan        → asociados cuyo nombre o apellido contenga "Juan"
+  - ?ciudad=Bogotá      → asociados de Bogotá
+  - ?nombre=Juan&ciudad=Medellín → combinación de filtros
+}
