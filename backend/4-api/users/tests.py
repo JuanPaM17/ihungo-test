@@ -1,3 +1,6 @@
+from datetime import datetime
+from datetime import timezone as tz
+
 from django.test import TestCase
 from django.urls import reverse
 from rest_framework import status
@@ -213,7 +216,6 @@ class AsociadoAPITest(TestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_delete_asociado_with_activities_returns_409(self) -> None:
-        from datetime import datetime, timezone as tz
         self._auth()
         Activity.objects.create(
             asociado=self.asociado,
