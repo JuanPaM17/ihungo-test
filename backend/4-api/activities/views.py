@@ -1,4 +1,5 @@
 from rest_framework import mixins, status, viewsets
+from rest_framework.decorators import action
 from rest_framework.request import Request
 from rest_framework.response import Response
 
@@ -6,8 +7,8 @@ from activities.filters import filter_by_date_range
 from activities.models import Activity
 from activities.permissions import ActivityPermission
 from activities.serializers import ActivityReadSerializer, ActivityWriteSerializer
-from activities.services import ActivityValidationError
-from users.models import User
+from activities.services import ActivityValidationError, check_availability
+from users.models import Asociado, User
 
 
 class ActivityViewSet(
@@ -78,3 +79,54 @@ class ActivityViewSet(
                 return self._error_response(exc.code, exc.message, status.HTTP_409_CONFLICT)
             return self._error_response(exc.code, exc.message, status.HTTP_400_BAD_REQUEST)
         return Response(ActivityReadSerializer(instance, context={"request": request}).data)
+
+    @action(detail=False, methods=["get"], url_path="disponibilidad")
+    def disponibilidad(self, request: Request) -> Response:
+        """
+        Consulta la disponibilidad de asociados en un rango de tiempo.
+
+        Query params:
+          - fecha_inicio (requerido): ISO 8601. Ejemplo: 2025-03-15T09:00:00Z
+          - fecha_fin    (requerido): ISO 8601. Ejemplo: 2025-03-15T11:00:00Z
+          - asociado_id  (opcional): ID numérico del asociado específico.
+
+        Respuesta:
+          {
+            "rango": { "inicio": ..., "fin": ... },
+            "resumen": { "libres": N, "ocupados": N },
+            "asociados": [
+              {
+                "id": 1,
+                "nombre": "Juan Pérez",
+                "email": "juan@example.com",
+                "estado": "libre" | "ocupado",
+                "actividades_bloqueantes": [ { id, activity_type, start_datetime, end_datetime, description } ]
+              }
+            ]
+          }
+        """
+        fecha_inicio = request.query_params.get("fecha_inicio")
+        fecha_fin = request.query_params.get("fecha_fin")
+
+        if not fecha_inicio or not fecha_fin:
+            return Response(
+                {"error": {"code": "MISSING_PARAMS", "message": "fecha_inicio y fecha_fin son requeridos."}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        asociado_id = request.query_params.get("asociado_id")
+
+        try:
+            result = check_availability(
+                fecha_inicio=fecha_inicio,
+                fecha_fin=fecha_fin,
+                asociado_id=int(asociado_id) if asociado_id else None,
+                user=request.user,
+            )
+        except (ValueError, TypeError):
+            return Response(
+                {"error": {"code": "INVALID_PARAMS", "message": "Parámetros inválidos. Verifica el formato de las fechas y el asociado_id."}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return Response(result)
