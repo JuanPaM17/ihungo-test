@@ -58,6 +58,14 @@ staticfiles/
 .vscode/
 .idea/
 
+# ── Claude Code ───────────────────────────────────────────────────────────────
+.claude/settings.local.json
+
+# ── Logs de observabilidad ────────────────────────────────────────────────────
+logs/*.jsonl
+!logs/example.jsonl
+logs/*.log
+
 # ── OS ────────────────────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
