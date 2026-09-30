@@ -20,6 +20,20 @@
             ],
             "llm_model": "default",
             "recursion_limit": 5
+        },
+        "asociados_agent": {
+            "agent_type": "react",
+            "prompt_path": "asociados_agent.md",
+            "tool_names": [
+                "list_asociados",
+                "buscar_asociados",
+                "obtener_asociado",
+                "crear_asociado",
+                "actualizar_asociado",
+                "eliminar_asociado"
+            ],
+            "llm_model": "default",
+            "recursion_limit": 5
         }
     },
     "supervisor_config": {
@@ -29,11 +43,13 @@
             "description": "Primary supervisor for ihungo users",
             "agent_names": [
                 "greeting_agent",
-                "actividades_agent"
+                "actividades_agent",
+                "asociados_agent"
             ],
             "handoff_descriptions": {
                 "greeting_agent": "Use for initial greetings and displaying the list of available services.",
-                "actividades_agent": "Use for ANY query about actividades or asociados: listing, creating, updating, or deleting activities, and listing asociados. Examples: 'muéstrame las actividades', 'crea una actividad', 'elimina la actividad 3', '¿quiénes son los asociados?'."
+                "actividades_agent": "Use for ANY query about actividades or availability: listing, creating, updating, or deleting activities, and checking who is free or busy on a given date.",
+                "asociados_agent": "Use for ANY query about asociados as people: listing, searching, viewing, creating, updating, or deleting asociados."
             }
         }
     }

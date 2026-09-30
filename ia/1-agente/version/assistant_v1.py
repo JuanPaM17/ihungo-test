@@ -18,12 +18,13 @@ from langchain_core.tracers.context import tracing_v2_enabled
 
 logger = logging.getLogger(__name__)
 
-# Ruta al JSON de configuración
+# Rutas de configuración v1
 BASE_DIR    = Path(__file__).parent.parent
 CONFIG_PATH = BASE_DIR / "config" / "v1" / "tools_config.json"
+PROMPT_PATH = BASE_DIR / "config" / "v1" / "prompt.md"
 
 def load_tools_from_json(path: str):
-    """Carga la descripción y las tools desde el JSON."""
+    """Carga las tools desde el JSON de configuración."""
     with open(path, 'r', encoding='utf-8') as f:
         cfg = json.load(f)
 
@@ -54,9 +55,15 @@ def load_tools_from_json(path: str):
         )
         tools.append(tool)
 
-    return cfg["agent"]["description"], tools
+    return tools
 
-AGENT_DESCRIPTION, BASE_TOOLS = load_tools_from_json(str(CONFIG_PATH))
+def load_prompt(path: Path) -> str:
+    """Carga el prompt del agente desde un archivo .md."""
+    with open(path, 'r', encoding='utf-8') as f:
+        return f.read().strip()
+
+AGENT_DESCRIPTION = load_prompt(PROMPT_PATH)
+BASE_TOOLS = load_tools_from_json(str(CONFIG_PATH))
 
 # Cache solo para instancias de LLM por tenant-version
 _LLM_CACHE: Dict[str, any] = {}

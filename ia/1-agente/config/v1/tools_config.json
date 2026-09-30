@@ -1,19 +1,16 @@
 {
-  "agent": {
-    "description": "Eres el asistente virtual de ihungo. Solo debes usar las herramientas disponibles para responder. Si la herramienta no existe o no tienes suficiente información, dilo claramente. No accedas a internet ni inventes información. Al saludar, preséntate como el asistente de ihungo y menciona que puedes ayudar con: actividades (listar, crear, actualizar, eliminar), asociados (listar y buscar por nombre, email o ciudad) y disponibilidad (consultar qué asociados están libres en un horario). Cuando el usuario mencione un asociado por nombre, usa buscar_asociados para encontrar su ID antes de operar. Nunca muestres IDs internos al usuario. Usa get_current_datetime cuando el usuario use fechas relativas como 'hoy', 'mañana' o 'esta semana'. REGLA CRÍTICA DE CONFIRMACIÓN: Nunca ejecutes create_actividad, update_actividad ni delete_actividad sin confirmación explícita del usuario. El flujo obligatorio es: (1) reúne todos los datos necesarios, (2) muestra un resumen de la operación con todos los detalles, (3) pide confirmación explícita al usuario, (4) espera que el usuario responda 'sí', 'confirmo' o equivalente, (5) solo entonces llama la herramienta. Para CREATE muestra: tipo, asociado, fechas, descripción. Para UPDATE muestra: qué campo cambia y de qué valor a qué valor. Para DELETE muestra: todos los datos de la actividad y advierte que es irreversible. Si el usuario dice 'no' o cancela, no ejecutes la operación."
-  },
   "tools": {
     "list_actividades": {
       "module": "tools.actividades.actividades_tool",
       "class": "list_actividades",
-      "description": "Obtiene la lista de actividades registradas. Permite filtrar por fecha de inicio (`desde`) y fecha de fin (`hasta`) en formato ISO 8601. Muestra la información relevante en bulletpoints.",
+      "description": "Obtiene la lista de actividades registradas. Permite filtrar por fecha de inicio (`desde`) y fecha de fin (`hasta`) en formato ISO 8601.",
       "fields": {
         "desde": {
-          "type": "str",
+          "type": "Optional[str]",
           "description": "Fecha/datetime de inicio del rango (ISO 8601). Ejemplo: 2025-01-01"
         },
         "hasta": {
-          "type": "str",
+          "type": "Optional[str]",
           "description": "Fecha/datetime de fin del rango (ISO 8601). Ejemplo: 2025-12-31"
         }
       }
@@ -21,7 +18,7 @@
     "create_actividad": {
       "module": "tools.actividades.actividades_tool",
       "class": "create_actividad",
-      "description": "Crea una nueva actividad en el sistema. Requiere tipo, fechas de inicio y fin, e ID del asociado. Devuelve los datos de la actividad creada.",
+      "description": "Crea una nueva ACTIVIDAD (taller, reunión, etc.) en el sistema. NO usar para crear asociados. Requiere tipo, fechas de inicio y fin, e ID del asociado.",
       "fields": {
         "activity_type": {
           "type": "str",
@@ -29,18 +26,18 @@
         },
         "start_datetime": {
           "type": "str",
-          "description": "Fecha y hora de inicio (ISO 8601). Ejemplo: 2025-03-10T09:00:00Z"
+          "description": "Fecha y hora de inicio (ISO 8601). Ejemplo: 2025-03-10T09:00:00-05:00"
         },
         "end_datetime": {
           "type": "str",
-          "description": "Fecha y hora de fin (ISO 8601). Ejemplo: 2025-03-10T11:00:00Z"
+          "description": "Fecha y hora de fin (ISO 8601). Ejemplo: 2025-03-10T11:00:00-05:00"
         },
         "asociado": {
           "type": "int",
           "description": "ID numérico del asociado al que pertenece la actividad"
         },
         "description": {
-          "type": "str",
+          "type": "Optional[str]",
           "description": "Descripción o notas adicionales (opcional)"
         }
       }
@@ -48,30 +45,30 @@
     "update_actividad": {
       "module": "tools.actividades.actividades_tool",
       "class": "update_actividad",
-      "description": "Modifica parcialmente una actividad existente. Solo se envían los campos que deben cambiar.",
+      "description": "Modifica parcialmente una ACTIVIDAD existente. Solo se envían los campos que deben cambiar. NO usar para modificar datos de un asociado.",
       "fields": {
         "actividad_id": {
           "type": "int",
           "description": "ID numérico de la actividad a modificar"
         },
         "activity_type": {
-          "type": "str",
+          "type": "Optional[str]",
           "description": "Nuevo tipo de actividad (opcional)"
         },
         "start_datetime": {
-          "type": "str",
+          "type": "Optional[str]",
           "description": "Nueva fecha y hora de inicio (ISO 8601, opcional)"
         },
         "end_datetime": {
-          "type": "str",
+          "type": "Optional[str]",
           "description": "Nueva fecha y hora de fin (ISO 8601, opcional)"
         },
         "asociado": {
-          "type": "int",
+          "type": "Optional[int]",
           "description": "Nuevo ID del asociado (opcional)"
         },
         "description": {
-          "type": "str",
+          "type": "Optional[str]",
           "description": "Nueva descripción (opcional)"
         }
       }
@@ -79,7 +76,7 @@
     "delete_actividad": {
       "module": "tools.actividades.actividades_tool",
       "class": "delete_actividad",
-      "description": "Elimina permanentemente una actividad del sistema. Siempre confirmar con el usuario antes de ejecutar.",
+      "description": "Elimina permanentemente una ACTIVIDAD del sistema. NO usar para eliminar asociados. Siempre confirmar con el usuario antes de ejecutar.",
       "fields": {
         "actividad_id": {
           "type": "int",
@@ -90,17 +87,17 @@
     "list_asociados": {
       "module": "tools.asociados.asociados_tool",
       "class": "list_asociados",
-      "description": "Obtiene la lista de todos los asociados registrados. Devuelve id, email, nombre, apellido y ciudad. Usar para listados generales. Para búsquedas por nombre/email/ciudad usar buscar_asociados.",
+      "description": "Obtiene la lista de todos los asociados registrados. Devuelve id, email, nombre, apellido y ciudad.",
       "fields": {}
     },
     "buscar_asociados": {
       "module": "tools.asociados.asociados_tool",
       "class": "buscar_asociados",
-      "description": "Busca asociados aplicando filtros opcionales (nombre, email, ciudad, identificacion) sobre la lista completa. Devuelve { total, coincidencias, mensaje }. Usar cuando el usuario mencione un asociado por nombre en lugar de por ID.",
+      "description": "Busca asociados aplicando filtros opcionales (nombre, email, ciudad, identificacion). Devuelve { total, coincidencias, mensaje }.",
       "fields": {
         "nombre": {
           "type": "Optional[str]",
-          "description": "Nombre o apellido parcial (case-insensitive). Ejemplo: 'Juan' o 'Pérez'."
+          "description": "Nombre o apellido parcial (case-insensitive). Ejemplo: 'Juan'."
         },
         "email": {
           "type": "Optional[str]",
@@ -116,29 +113,113 @@
         }
       }
     },
-    "consultar_disponibilidad": {
-      "module": "tools.actividades.actividades_tool",
-      "class": "consultar_disponibilidad",
-      "description": "Consulta la disponibilidad de uno o todos los asociados en un rango de tiempo. Un asociado está disponible si no tiene actividades solapadas en ese rango. Devuelve { rango, resumen: { libres, ocupados }, asociados: [{ id, nombre, estado, actividades_bloqueantes }] }.",
+    "obtener_asociado": {
+      "module": "tools.asociados.asociados_tool",
+      "class": "obtener_asociado",
+      "description": "Obtiene el detalle completo de un asociado específico por su ID.",
       "fields": {
-        "fecha_inicio": {
-          "type": "str",
-          "description": "Inicio del rango a consultar (ISO 8601). Ejemplo: 2025-03-15T09:00:00Z"
-        },
-        "fecha_fin": {
-          "type": "str",
-          "description": "Fin del rango a consultar (ISO 8601). Ejemplo: 2025-03-15T11:00:00Z"
-        },
         "asociado_id": {
-          "type": "Optional[int]",
-          "description": "ID del asociado específico. Si se omite, evalúa todos los asociados."
+          "type": "int",
+          "description": "ID numérico del asociado a consultar."
         }
       }
     },
-    "get_current_datetime": {
-      "module": "tools.utils.datetime_tool",
-      "class": "GetCurrentDatetimeTool",
-      "description": "Devuelve la fecha y hora actual en formato yyyy-MM-dd HH:mm:ss (zona horaria America/Bogota). Usar cuando el usuario mencione fechas relativas como 'hoy', 'mañana', 'esta semana'.",
+    "crear_asociado": {
+      "module": "tools.asociados.asociados_tool",
+      "class": "crear_asociado",
+      "description": "Crea un nuevo ASOCIADO (persona) en el sistema. NO usar para crear actividades. Requiere email, password, identificación, nombre, apellido y ciudad. Requiere rol administrador.",
+      "fields": {
+        "email": {
+          "type": "str",
+          "description": "Email del nuevo asociado. Debe ser único."
+        },
+        "password": {
+          "type": "str",
+          "description": "Contraseña inicial del asociado."
+        },
+        "identification": {
+          "type": "str",
+          "description": "Número de identificación (cédula). Debe ser único."
+        },
+        "first_name": {
+          "type": "str",
+          "description": "Nombre del asociado."
+        },
+        "last_name": {
+          "type": "str",
+          "description": "Apellido del asociado."
+        },
+        "city": {
+          "type": "str",
+          "description": "Ciudad del asociado."
+        }
+      }
+    },
+    "actualizar_asociado": {
+      "module": "tools.asociados.asociados_tool",
+      "class": "actualizar_asociado",
+      "description": "Actualiza parcialmente los datos de un ASOCIADO (persona). NO usar para modificar actividades. Requiere rol administrador.",
+      "fields": {
+        "asociado_id": {
+          "type": "int",
+          "description": "ID numérico del asociado a modificar."
+        },
+        "first_name": {
+          "type": "Optional[str]",
+          "description": "Nuevo nombre. Omitir si no cambia."
+        },
+        "last_name": {
+          "type": "Optional[str]",
+          "description": "Nuevo apellido. Omitir si no cambia."
+        },
+        "city": {
+          "type": "Optional[str]",
+          "description": "Nueva ciudad. Omitir si no cambia."
+        },
+        "identification": {
+          "type": "Optional[str]",
+          "description": "Nueva identificación. Omitir si no cambia."
+        },
+        "email": {
+          "type": "Optional[str]",
+          "description": "Nuevo email. Omitir si no cambia."
+        }
+      }
+    },
+    "eliminar_asociado": {
+      "module": "tools.asociados.asociados_tool",
+      "class": "eliminar_asociado",
+      "description": "Elimina permanentemente un ASOCIADO y su cuenta de usuario. NO usar para eliminar actividades. Requiere rol administrador. Si el asociado tiene actividades, devuelve error HAS_ACTIVITIES.",
+      "fields": {
+        "asociado_id": {
+          "type": "int",
+          "description": "ID numérico del asociado a eliminar."
+        }
+      }
+    },
+    "consultar_disponibilidad": {
+      "module": "tools.actividades.actividades_tool",
+      "class": "consultar_disponibilidad",
+      "description": "Consulta la disponibilidad de uno o todos los asociados en un rango de tiempo. Devuelve { rango, resumen: { libres, ocupados }, asociados: [{ id, nombre, estado, actividades_bloqueantes }] }.",
+      "fields": {
+        "fecha_inicio": {
+          "type": "str",
+          "description": "Inicio del rango (ISO 8601). Ejemplo: 2025-03-15T09:00:00-05:00"
+        },
+        "fecha_fin": {
+          "type": "str",
+          "description": "Fin del rango (ISO 8601). Ejemplo: 2025-03-15T11:00:00-05:00"
+        },
+        "asociado_id": {
+          "type": "Optional[int]",
+          "description": "ID del asociado específico. Si se omite, evalúa todos."
+        }
+      }
+    },
+    "get_datetime": {
+      "module": "tools.system.system",
+      "class": "get_datetime",
+      "description": "Devuelve la fecha y hora actual en America/Bogota. Usar SIEMPRE antes de resolver fechas relativas como 'hoy', 'mañana', 'esta semana'. Nunca calcules fechas desde tu conocimiento interno.",
       "fields": {}
     }
   }
