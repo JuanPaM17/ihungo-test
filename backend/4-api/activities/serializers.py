@@ -45,6 +45,10 @@ class ActivityWriteSerializer(serializers.ModelSerializer):
         read_only_fields = ("id",)
 
     def validate(self, attrs):
+        # On PATCH (partial=True), asociado is not required — it keeps the existing value.
+        if self.partial:
+            return attrs
+
         user: User = self.context["request"].user
         if "asociado" not in attrs or attrs.get("asociado") is None:
             if user.role == User.Role.ADMIN:
