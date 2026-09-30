@@ -2,6 +2,7 @@ from rest_framework import serializers
 
 from activities.models import Activity
 from activities.services import ActivityValidationError, create_activity, update_activity
+from users.models import Asociado, User
 from users.serializers import AsociadoSerializer, UserSerializer
 
 
@@ -25,6 +26,12 @@ class ActivityReadSerializer(serializers.ModelSerializer):
 
 
 class ActivityWriteSerializer(serializers.ModelSerializer):
+    asociado = serializers.PrimaryKeyRelatedField(
+        queryset=Asociado.objects.all(),
+        required=False,
+        allow_null=True,
+    )
+
     class Meta:
         model = Activity
         fields = (
@@ -36,6 +43,21 @@ class ActivityWriteSerializer(serializers.ModelSerializer):
             "asociado",
         )
         read_only_fields = ("id",)
+
+    def validate(self, attrs):
+        user: User = self.context["request"].user
+        if "asociado" not in attrs or attrs.get("asociado") is None:
+            if user.role == User.Role.ADMIN:
+                raise serializers.ValidationError(
+                    {"asociado": "Este campo es requerido para administradores."}
+                )
+            try:
+                attrs["asociado"] = user.asociado_profile
+            except Exception:
+                raise serializers.ValidationError(
+                    {"asociado": "No se encontró el perfil de asociado para este usuario."}
+                )
+        return attrs
 
     def create(self, validated_data: dict) -> Activity:
         try:
