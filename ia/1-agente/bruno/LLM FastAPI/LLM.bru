@@ -1,0 +1,29 @@
+meta {
+  name: LLM
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{LLM_URL}}/llm/v2/ihungo
+  body: json
+  auth: inherit
+}
+
+headers {
+  Authorization: Bearer {{TOKEN}}
+  Content-Type: application/json
+}
+
+body:json {
+  {"query":"Hpla","language":"es","userName":"Juan","isAnonymous":false}
+}
+
+vars:pre-request {
+  TOKEN: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTc5MDgyMzI2NywiaWF0IjoxNzkwNzM2ODY3LCJqdGkiOiI0MDU0MDQ2ZjI4Zjg0ZDk0YWY0MTA3NTk2YTYzN2RjYyIsInVzZXJfaWQiOjF9.u-Wrhsa4oQuEk-5Y9qvaB4-WgeeVlYQZl22etloPDP
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
