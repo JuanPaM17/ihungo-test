@@ -164,7 +164,14 @@ Ejercicio de co-creación con asistente de IA para diseñar e implementar la fun
 
 Pipeline CI/CD para el Backend 4 que ejecuta lint, tests, build de imagen Docker, escaneo de vulnerabilidades con Trivy y push a Docker Hub. El push solo ocurre en `main` o tags `v*`, nunca en pull requests.
 
+| Recurso | URL |
+|---|---|
+| Espejo GitHub (Actions) | https://github.com/JuanPaM17/ihungo-test |
+| Docker Hub — repositorio | https://hub.docker.com/r/juanpablomc/ihungo-backend |
+| Docker Hub — etiquetas | https://hub.docker.com/r/juanpablomc/ihungo-backend/tags |
+
 - Workflow: `.github/workflows/ci-dockerhub.yml`
+- README completo: `devops/1-github-actions/README.md`
 
 Etapas:
 1. Lint (ruff)
