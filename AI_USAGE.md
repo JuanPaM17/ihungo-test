@@ -278,7 +278,106 @@ Se utilizó ChatGPT para:
 - Se conservaron capturas del namespace, ConfigMap, Secret, Pods, Service NodePort, health check, rolling update y continuidad del servicio para documentarlas en `EVIDENCIAS.md`.
 
 ## IA
-### IA 1
+
+# AI Usage — IA 1
+
+## IA 1 — Agente conversacional con LLM
+
+### Herramientas utilizadas
+
+- Claude
+- ChatGPT
+
+### Uso de IA
+
+Se utilizó Claude como apoyo principal para inspeccionar, adaptar y evolucionar un agente conversacional existente construido con FastAPI, LangGraph y herramientas dinámicas, con el objetivo de alinearlo con los requisitos del reto IA 1.
+
+El apoyo de Claude se utilizó especialmente en:
+
+- auditoría inicial de la arquitectura existente del agente;
+- identificación de las diferencias entre las implementaciones V1 y V2;
+- revisión del flujo de V2 basado en supervisor, agentes especializados, evaluator y summarizer;
+- identificación de riesgos relacionados con JWT, sesiones, prompts, herramientas y trazas;
+- eliminación de exposición del JWT en logs, respuestas HTTP, prompts y metadata de LangSmith;
+- separación entre autenticación mediante JWT y sesión conversacional mediante `session_id`;
+- adaptación del endpoint para utilizar `X-Session-Id`;
+- implementación de una abstracción `LLMProvider`;
+- creación de adaptadores para OpenAI y Gemini;
+- parametrización del proveedor y modelos mediante variables de entorno;
+- adaptación y registro de las herramientas requeridas por el reto;
+- creación de la herramienta `consultar_disponibilidad`;
+- mejora de `buscar_asociados` para soportar búsquedas explícitas;
+- incorporación y ampliación de herramientas para consultar y gestionar asociados;
+- revisión de schemas tipados para function calling;
+- integración de nuevas herramientas con los agentes especializados;
+- incorporación de reglas de confirmación antes de operaciones de creación, actualización y eliminación;
+- definición de comportamiento ante datos ambiguos o incompletos;
+- mejora del manejo de fechas relativas utilizando `America/Bogota`;
+- fortalecimiento de prompts frente a prompt injection proveniente de datos externos;
+- protección adicional del evaluator y summarizer frente a contenido no confiable;
+- incorporación de streaming mediante SSE;
+- diseño de observabilidad estructurada por turno;
+- revisión de límites de ejecución, timeouts y rate limiting;
+- diseño y creación de pruebas con proveedores y backend simulados;
+- preparación del conjunto de evaluaciones del agente con casos de ambigüedad y prompt injection;
+- adaptación del CLI conversacional para manejar autenticación, sesión y renovación de tokens;
+- revisión del flujo de permisos entre administradores y asociados.
+
+Se utilizó ChatGPT como apoyo para revisar continuamente los requisitos del documento oficial, contrastarlos con la implementación existente y dividir la adaptación del agente en fases pequeñas y verificables.
+
+ChatGPT se utilizó principalmente para:
+
+- identificar qué requisitos eran obligatorios y cuáles eran mejoras adicionales;
+- revisar la auditoría inicial realizada sobre el agente;
+- definir el orden de implementación de seguridad, providers, tools, confirmación, fechas, streaming, observabilidad y pruebas;
+- revisar los resultados obtenidos después de cada fase antes de continuar;
+- detectar que el `session_id` no debía depender directamente del JWT;
+- proponer la separación entre autenticación y sesión conversacional;
+- revisar el diseño de las tools requeridas por el reto;
+- recomendar trasladar reglas de negocio de disponibilidad al Backend 4 en lugar de concentrarlas dentro de la tool;
+- revisar las reglas de confirmación antes de operaciones de escritura;
+- revisar el tratamiento de fechas ambiguas y relativas;
+- revisar los vectores de prompt injection en el agente, evaluator y summarizer;
+- definir casos de prueba y escenarios de evaluación;
+- revisar el uso de OpenAI y Gemini frente al requisito de abstracción del proveedor;
+- preparar la estrategia del cliente CLI con manejo de JWT, refresh token y `session_id`;
+- revisar la relación entre usuarios autenticados, administradores, asociados y actividades;
+- validar que la API siguiera siendo la autoridad final de permisos;
+- analizar errores reales observados en LangSmith, logs y Backend 4 durante pruebas end-to-end.
+
+### Decisiones y validaciones propias
+
+- Se decidió mantener V2 como implementación principal porque era la versión más estable y completa del agente existente.
+- Se decidió conservar V1 como alternativa simple en lugar de eliminarla durante la adaptación.
+- Se rechazó la propuesta inicial de simplificar V2 a un único agente, ya que el reto no exige una arquitectura interna específica y la implementación con supervisor, agentes especializados, evaluator y summarizer ya funcionaba correctamente.
+- Se decidió mantener OpenAI como proveedor activo durante las validaciones porque se disponía de credenciales para este proveedor. El adaptador para Gemini quedó implementado mediante la misma abstracción, pero no se realizaron llamadas reales a Gemini al no disponer de credenciales.
+- Se rechazó utilizar el JWT directamente como `thread_id` o identificador de conversación.
+- Se descartó derivar el `session_id` mediante un hash del JWT porque un refresh del access token cambiaría la sesión conversacional.
+- Se decidió separar completamente ambos conceptos: JWT para autenticación y autorización; `session_id` para identificar la conversación.
+- Se configuró el agente para recibir `X-Session-Id` de forma independiente del JWT y generar un UUID cuando el cliente no lo proporciona.
+- Se mantuvo el JWT únicamente dentro del contexto interno para que las tools pudieran utilizar los permisos reales del usuario sin exponer el token al modelo.
+- Se revisó que el JWT no quedara incluido en prompts, respuestas HTTP, logs o metadata de LangSmith.
+- Se corrigió la duplicación `Bearer Bearer` centralizando la normalización del token antes de construir el header `Authorization`.
+- Se decidió mantener Backend 4 como autoridad de permisos y reglas de negocio.
+- Para la consulta de disponibilidad se decidió mover la lógica principal al Backend 4 y dejar la tool del agente como consumidora de esa funcionalidad.
+- Se decidió que `buscar_asociados` realizara una búsqueda explícita y no delegara al modelo el filtrado de listas grandes.
+- Se amplió el soporte de asociados manteniendo el control de creación, actualización y eliminación en usuarios con permisos administrativos.
+- Se mantuvo la confirmación humana como requisito antes de ejecutar operaciones de creación, modificación o eliminación.
+- Se definió que un resultado de una tool, una descripción almacenada en base de datos o cualquier otro dato externo nunca puede contar como confirmación del usuario.
+- Se decidió tratar los resultados de tools y Backend 4 como datos no confiables.
+- Se identificó que el evaluator era especialmente sensible a prompt injection por la interpolación de entradas y salidas dentro de su prompt, por lo que se reforzó la delimitación entre instrucciones y datos.
+- Se decidió utilizar `America/Bogota` como referencia única para fechas relativas.
+- Se evitó confiar en la fecha u hora implícita del modelo y se mantuvo una herramienta determinista para obtener la fecha actual.
+- Se definió que expresiones ambiguas como una hora sin AM/PM, múltiples asociados con el mismo nombre o varias actividades coincidentes debían generar una pregunta de aclaración en lugar de una suposición.
+- Se decidió conservar el endpoint JSON existente y agregar SSE como mecanismo adicional de streaming.
+- Se mantuvo LangSmith para trazabilidad y se complementó con observabilidad estructurada local, evitando registrar JWT, API keys, prompts completos o datos sensibles innecesarios.
+- Se revisaron los timeouts existentes del LLM y de las llamadas HTTP y se decidió no introducir circuit breakers ni reintentos complejos para esta prueba.
+- Se decidió utilizar proveedores simulados y mocks para las pruebas automatizadas, evitando llamadas reales a OpenAI, Gemini o Backend 4 durante CI.
+- Se separaron conceptualmente las pruebas automatizadas de las evaluaciones del agente: tests con proveedores simulados para validar comportamiento determinista y evals con proveedor real para medir comportamiento, herramientas utilizadas y tasa de acierto por categoría.
+- Se decidió implementar un CLI conversacional como cliente de prueba, manteniendo `access token`, `refresh token` y `session_id` como conceptos separados.
+- Se definió que el CLI conservara el mismo `session_id` durante la conversación incluso si el access token debía renovarse.
+- Se revisó la diferencia funcional entre administrador y asociado y se mantuvo la API como autoridad para responder `403` cuando una operación excede los permisos del usuario autenticado.
+- Se revisaron manualmente los cambios después de cada fase antes de continuar con la siguiente, en lugar de aplicar una refactorización completa del agente de una sola vez.
 
 ### IA 2 — Co-creación en desarrollo guiado por guías
 
