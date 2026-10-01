@@ -37,7 +37,7 @@ class ActividadTool(BaseToolConfigManager):
         )
         return await tenant_config["_api_request_manager"].make_request(
             method=HTTPMethod.POST,
-            endpoint=cls._BASE_URL,
+            endpoint=cls._BASE_URL + "/",
             headers=basic_headers,
             query_params=None,
             body_params=body,
@@ -51,7 +51,7 @@ class ActividadTool(BaseToolConfigManager):
         )
         return await tenant_config["_api_request_manager"].make_request(
             method=HTTPMethod.PATCH,
-            endpoint=f"{cls._BASE_URL}/{actividad_id}",
+            endpoint=f"{cls._BASE_URL}/{actividad_id}/",
             headers=basic_headers,
             query_params=None,
             body_params=body,
@@ -65,7 +65,7 @@ class ActividadTool(BaseToolConfigManager):
         )
         return await tenant_config["_api_request_manager"].make_request(
             method=HTTPMethod.GET,
-            endpoint=f"{cls._BASE_URL}/disponibilidad",
+            endpoint=f"{cls._BASE_URL}/disponibilidad/",
             headers=basic_headers,
             query_params=params,
             body_params=None,
@@ -79,7 +79,7 @@ class ActividadTool(BaseToolConfigManager):
         )
         return await tenant_config["_api_request_manager"].make_request(
             method=HTTPMethod.DELETE,
-            endpoint=f"{cls._BASE_URL}/{actividad_id}",
+            endpoint=f"{cls._BASE_URL}/{actividad_id}/",
             headers=basic_headers,
             query_params=None,
             body_params=None,

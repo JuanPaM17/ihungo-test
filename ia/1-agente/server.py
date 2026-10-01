@@ -4,6 +4,8 @@ import time
 import logging
 import urllib.parse
 import uuid
+import base64
+import json as _json_std
 
 # Third-party packages
 from dotenv import load_dotenv
@@ -47,6 +49,19 @@ app.add_middleware(
 
 logger = logging.getLogger(__name__)
 
+
+def _extract_role_from_jwt(token: str) -> str:
+    """Decodes the JWT payload (no signature verification) and returns the role claim."""
+    try:
+        payload_b64 = token.split(".")[1]
+        # Add padding if needed
+        payload_b64 += "=" * (4 - len(payload_b64) % 4)
+        payload = _json_std.loads(base64.urlsafe_b64decode(payload_b64))
+        return payload.get("role", "associate")
+    except Exception:
+        return "associate"
+
+
 class RequestParams(BaseModel):
     query: Optional[str] = None
     type: Optional[str] = None
@@ -72,6 +87,7 @@ async def entry_tenant(
 
     _raw_auth = request.headers.get("Authorization") or request.headers.get("authorization") or ""
     token = _raw_auth.removeprefix("Bearer ").strip()
+    role = _extract_role_from_jwt(token)
     query = params.query
     query_type = params.type
     document = params.document
@@ -103,6 +119,7 @@ async def entry_tenant(
     logger.info("Document: %s", document)
     logger.info("User Name: %s", user_name)
     logger.info("Is Anonymous: %s", is_anonymous)
+    logger.info("Role: %s", role)
     logger.info("Language: %s", language)
     logger.info("Prefix History: %s", prefix_history)
 
@@ -115,7 +132,8 @@ async def entry_tenant(
         "user_name": user_name,
         "language": language,
         "version": version,
-        "is_anonymous": is_anonymous
+        "is_anonymous": is_anonymous,
+        "role": role,
     }
     llm_response = {}
     if version == "v1":
@@ -155,6 +173,7 @@ async def entry_tenant_stream(
 
     _raw_auth = request.headers.get("Authorization") or request.headers.get("authorization") or ""
     token = _raw_auth.removeprefix("Bearer ").strip()
+    role = _extract_role_from_jwt(token)
     query = params.query
     document = params.document
     user_name = params.userName
@@ -189,6 +208,7 @@ async def entry_tenant_stream(
                 document=document,
                 user_name=user_name,
                 is_anonymous=is_anonymous,
+                role=role,
                 language=language,
                 version=version,
             ):

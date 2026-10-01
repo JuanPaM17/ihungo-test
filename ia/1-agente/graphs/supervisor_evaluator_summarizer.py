@@ -150,10 +150,10 @@ async def instantiate_supervisor_anonymous(available_llms, tenant_id, state: dic
         raise Exception("tenant_id is required for dynamic supervisor creation")
 
     try:
-        # Cargar agentes dinámicos
         from utils.agents import (
             create_dynamic_agents_from_config,
             get_all_available_tools,
+            create_dynamic_supervisors_from_config,
         )
 
         available_tools = await get_all_available_tools()
@@ -163,10 +163,6 @@ async def instantiate_supervisor_anonymous(available_llms, tenant_id, state: dic
 
         dynamic_agents = list(dynamic_agents_dict.values())
         logger.info(f"Se cargaron {len(dynamic_agents)} agentes dinámicos")
-
-        # Crear supervisor dinámico anónimo - pasar todos los agentes disponibles
-        # El supervisor filtrará los agentes según su configuración (agent_names)
-        from utils.agents import create_dynamic_supervisors_from_config
 
         supervisors_dict = await create_dynamic_supervisors_from_config(
             tenant_id, available_llms, dynamic_agents
@@ -185,10 +181,53 @@ async def instantiate_supervisor_anonymous(available_llms, tenant_id, state: dic
         raise
 
 
+async def instantiate_supervisor_by_role(
+    available_llms, tenant_id, state: dict = {}, role: str = "associate"
+):
+    """Creates a role-based supervisor. Uses supervisor_<role> key from dynamic config."""
+
+    if not tenant_id:
+        raise Exception("tenant_id is required for dynamic supervisor creation")
+
+    supervisor_key = f"supervisor_{role}"
+
+    try:
+        from utils.agents import (
+            create_dynamic_agents_from_config,
+            get_all_available_tools,
+            create_dynamic_supervisors_from_config,
+        )
+
+        available_tools = await get_all_available_tools()
+        dynamic_agents_dict = await create_dynamic_agents_from_config(
+            tenant_id, available_llms, available_tools
+        )
+
+        dynamic_agents = list(dynamic_agents_dict.values())
+        logger.info(f"Se cargaron {len(dynamic_agents)} agentes dinámicos para rol '{role}'")
+
+        supervisors_dict = await create_dynamic_supervisors_from_config(
+            tenant_id, available_llms, dynamic_agents
+        )
+
+        if supervisor_key not in supervisors_dict:
+            raise Exception(
+                f"Supervisor '{supervisor_key}' not found in dynamic configuration"
+            )
+
+        supervisor = supervisors_dict[supervisor_key]
+        return supervisor.compile()
+
+    except Exception as e:
+        logger.error(f"Error creating supervisor for role '{role}': {e}")
+        raise
+
+
 async def evaluator_node(
     state: EvaluatorState,
     tenant_id=None,
     evaluator_model=None,
+    supervisor_node: str = "supervisor",
 ) -> Command[Literal["supervisor", "supervisor_anon", END]]:
     # Obtener prompt dinámico para el evaluador desde S3
     evaluator_prompt = None
@@ -245,7 +284,7 @@ async def evaluator_node(
     if passed or state["trial"] > 2:
         return Command(update={"trial": state["trial"] + 1}, goto="summarizer")
     else:
-        return Command(update={"trial": state["trial"] + 1}, goto="supervisor")
+        return Command(update={"trial": state["trial"] + 1}, goto=supervisor_node)
 
 
 async def create_summarizer_node(model, tenant_id):
@@ -300,6 +339,7 @@ async def create_graph(
     tenant_id,
     state: dict = {},
     supervisor: CompiledStateGraph = None,
+    supervisor_node: str = "supervisor",
 ) -> CompiledStateGraph:
 
     try:
@@ -309,19 +349,19 @@ async def create_graph(
         summarizer_model = available_llms.get("default")
 
         async def evaluator(state):
-            return await evaluator_node(state, tenant_id, evaluator_model)
+            return await evaluator_node(state, tenant_id, evaluator_model, supervisor_node)
 
         summarizer = await create_summarizer_node(
             summarizer_model, tenant_id
         )
 
         # Nodes
-        workflow.add_node("supervisor", supervisor)
+        workflow.add_node(supervisor_node, supervisor)
         workflow.add_node("evaluator", evaluator)
         workflow.add_node("summarizer", summarizer)
         # Edges
-        workflow.add_edge(START, "supervisor")
-        workflow.add_edge("supervisor", "evaluator")
+        workflow.add_edge(START, supervisor_node)
+        workflow.add_edge(supervisor_node, "evaluator")
         workflow.add_edge("summarizer", END)
 
         # In memory checkpointer

@@ -34,13 +34,31 @@
             ],
             "llm_model": "default",
             "recursion_limit": 5
+        },
+        "greeting_agent_associate": {
+            "prompt_path": "greeting_agent_associate.md",
+            "llm_model": "default",
+            "recursion_limit": 1
+        },
+        "actividades_agent_associate": {
+            "agent_type": "react",
+            "prompt_path": "actividades_agent_associate.md",
+            "tool_names": [
+                "list_actividades",
+                "update_actividad",
+                "delete_actividad",
+                "consultar_disponibilidad",
+                "get_datetime"
+            ],
+            "llm_model": "default",
+            "recursion_limit": 5
         }
     },
     "supervisor_config": {
         "supervisor": {
             "prompt_path": "supervisor_prompt.md",
             "llm_model": "default",
-            "description": "Primary supervisor for ihungo users",
+            "description": "Primary supervisor for admin users",
             "agent_names": [
                 "greeting_agent",
                 "actividades_agent",
@@ -50,6 +68,19 @@
                 "greeting_agent": "Use for initial greetings and displaying the list of available services.",
                 "actividades_agent": "Use for ANY query about actividades or availability: listing, creating, updating, or deleting activities, and checking who is free or busy on a given date.",
                 "asociados_agent": "Use for ANY query about asociados as people: listing, searching, viewing, creating, updating, or deleting asociados."
+            }
+        },
+        "supervisor_associate": {
+            "prompt_path": "supervisor_associate_prompt.md",
+            "llm_model": "default",
+            "description": "Supervisor for asociado users — restricted to own activities",
+            "agent_names": [
+                "greeting_agent_associate",
+                "actividades_agent_associate"
+            ],
+            "handoff_descriptions": {
+                "greeting_agent_associate": "Use for initial greetings and showing the asociado what they can do.",
+                "actividades_agent_associate": "Use for ANY query about the user's own activities: listing, updating, or deleting their activities, and checking availability."
             }
         }
     }

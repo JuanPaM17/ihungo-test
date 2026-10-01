@@ -10,7 +10,8 @@ load_dotenv()
 BACKEND_API_URL: str = os.getenv("BACKEND_API_URL", "http://localhost:8080")
 AGENT_API_URL: str = os.getenv("AGENT_API_URL", "http://localhost:8001")
 CLI_STREAMING: bool = os.getenv("CLI_STREAMING", "false").lower() == "true"
-CLI_REQUEST_TIMEOUT: float = float(os.getenv("CLI_REQUEST_TIMEOUT", "120"))
+_timeout_env = os.getenv("CLI_REQUEST_TIMEOUT")
+CLI_REQUEST_TIMEOUT: float | None = float(_timeout_env) if _timeout_env else None
 
 # Rutas de autenticacion (SimpleJWT)
 LOGIN_PATH = "/api/auth/token/"

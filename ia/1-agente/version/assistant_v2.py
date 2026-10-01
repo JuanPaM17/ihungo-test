@@ -20,6 +20,7 @@ from graphs.utils import innermost_subgraph_state
 from graphs.supervisor_evaluator_summarizer import (
     instantiate_supervisor,
     instantiate_supervisor_anonymous,
+    instantiate_supervisor_by_role,
 )
 from langchain_core.tracers.context import tracing_v2_enabled
 from utils.observability import write_turn_log
@@ -55,24 +56,22 @@ class AssistantV2:
     async def build_main_graph(self, state: Dict[str, Any] = {}):
         """Build the main processing graph using the supervisor-evaluator-summarizer architecture."""
         try:
-            # Determine graph type from state
-            is_anonymous = state.get("is_anonymous", False)
+            role = state.get("role", "associate")
             from graphs.supervisor_evaluator_summarizer import create_graph
 
-            # Use the supervisor graph architecture based on is_anonymous
-            if is_anonymous:
-                # Create anonymous supervisor graph
-                supervisor = await instantiate_supervisor_anonymous(
-                    self.available_llms, self.tenant_id, state
-                )
-            else:
-                # Create supervisor graph
+            if role == "admin":
                 supervisor = await instantiate_supervisor(
                     self.available_llms, self.tenant_id, state
                 )
+                supervisor_node = "supervisor"
+            else:
+                supervisor = await instantiate_supervisor_by_role(
+                    self.available_llms, self.tenant_id, state, role
+                )
+                supervisor_node = f"supervisor_{role}"
 
             main_graph = await create_graph(
-                self.available_llms, self.tenant_id, state, supervisor
+                self.available_llms, self.tenant_id, state, supervisor, supervisor_node
             )
             if main_graph is None:
                 raise RuntimeError(
@@ -97,9 +96,9 @@ class AssistantV2Manager:
         version: str = "v2",
         state: Dict[str, Any] = {},
     ):
-        """Get or create a graph for a specific tenant based on is_anonymous."""
-        is_anonymous = state.get("is_anonymous", False)
-        cache_key = f"{tenant_id}_{'anonymous' if is_anonymous else ''}"
+        """Get or create a graph for a specific tenant based on role."""
+        role = state.get("role", "associate")
+        cache_key = f"{tenant_id}_{role}"
 
         if cache_key not in self.cache:
             assistant = AssistantV2(tenant_id, version)
@@ -116,8 +115,8 @@ class AssistantV2Manager:
 
     def get_assistant_for_tenant(self, tenant_id: str, state: Dict[str, Any] = {}):
         """Get the assistant instance for a specific tenant."""
-        is_anonymous = state.get("is_anonymous", False)
-        cache_key = f"{tenant_id}_{'anonymous' if is_anonymous else ''}"
+        role = state.get("role", "associate")
+        cache_key = f"{tenant_id}_{role}"
         return self.assistants.get(cache_key)
 
 assistant_manager = AssistantV2Manager()
@@ -130,14 +129,15 @@ async def process_query_v2(
     document: str = "_None_",
     user_name: str = "_None_",
     is_anonymous: bool = True,
+    role: str = "associate",
     language: str = "en",
     version: str = "v2",
-    
 ) -> str:
 
     user_state = {
         "user_name": user_name,
         "is_anonymous": is_anonymous,
+        "role": role,
         "document": document,
         "language": language.upper(),
     }
@@ -297,6 +297,7 @@ async def stream_query_v2(
     document: str = "_None_",
     user_name: str = "_None_",
     is_anonymous: bool = True,
+    role: str = "associate",
     language: str = "en",
     version: str = "v2",
 ) -> AsyncIterator[str]:
@@ -315,6 +316,7 @@ async def stream_query_v2(
     user_state = {
         "user_name": user_name,
         "is_anonymous": is_anonymous,
+        "role": role,
         "document": document,
         "language": language.upper(),
     }

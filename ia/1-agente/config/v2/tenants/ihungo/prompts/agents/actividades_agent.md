@@ -73,6 +73,7 @@ Searches asociados using optional filters.
 
 **When to use:** Always use this tool before creating an activity when the user refers to a person by name instead of ID.
 
+
 **Result cases:**
 - 0 results: inform the user no asociado was found.
 - 1 result: use the `id` directly for the next operation.

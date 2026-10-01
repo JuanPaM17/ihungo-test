@@ -50,7 +50,7 @@ class AsociadoTool(BaseToolConfigManager):
         )
         return await tenant_config["_api_request_manager"].make_request(
             method=HTTPMethod.POST,
-            endpoint=cls._BASE_URL,
+            endpoint=cls._BASE_URL + "/",
             headers=basic_headers,
             query_params={},
             body_params=body,
@@ -236,6 +236,14 @@ async def crear_asociado(
     IMPORTANTE: Siempre solicitar confirmación antes de ejecutar esta herramienta.
     """
     tenant_id, token = _get_metadata(config)
+
+    if not password or not str(password).strip():
+        return {
+            "success": False,
+            "action": "create_associate",
+            "error": "El campo 'password' es obligatorio y no puede estar vacío. Solicita una contraseña al usuario antes de continuar.",
+        }
+
     body = {
         "email": email,
         "password": password,
@@ -244,7 +252,24 @@ async def crear_asociado(
         "last_name": last_name,
         "city": city,
     }
-    return await AsociadoTool.create_asociado(tenant_id=tenant_id, token=token, body=body)
+    safe_keys = [k for k in body if k != "password"]
+    logger.info("crear_asociado: method=POST endpoint=/api/asociados/ payload_keys=%s", safe_keys)
+    result = await AsociadoTool.create_asociado(tenant_id=tenant_id, token=token, body=body)
+
+    # Detect redirect/wrong response: backend returned a list instead of a dict
+    if isinstance(result, list):
+        logger.error("crear_asociado: received a list instead of a dict — likely a redirect on POST (missing trailing slash)")
+        return {"success": False, "action": "create_associate", "error": "El servidor devolvió una respuesta inesperada. No se pudo confirmar la creación."}
+
+    if isinstance(result, dict):
+        # Error from backend (400, 403, 409, etc.)
+        if "error" in result or "detail" in result:
+            return {"success": False, "action": "create_associate", "error": result.get("error") or result.get("detail")}
+        # Success: backend returns the created asociado with an id field
+        if "id" in result:
+            return {"success": True, "action": "create_associate", "status_code": 201, "data": result}
+
+    return {"success": False, "action": "create_associate", "error": f"Respuesta inesperada: {result}"}
 
 
 @tool

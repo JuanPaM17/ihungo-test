@@ -71,6 +71,7 @@ class ApiRequestManager:
         start_time = time.time()
         url = self._api_endpoint.rstrip("/") + "/" + endpoint.lstrip("/")
         logger.info("-- MAKE REQUEST --")
+        logger.info("method=%s endpoint=%s", method.value, endpoint)
         logger.info("URL API: %s", url)
         _safe_headers = {k: ("[REDACTED]" if k.lower() == "authorization" else v) for k, v in (headers or {}).items()}
         logger.info("HEADERS: %s", _safe_headers)
@@ -81,7 +82,7 @@ class ApiRequestManager:
             format_params = sanitize_json_data(query_params.dict())
         except:
             format_params = sanitize_json_data(query_params)
-        logger.debug("PARAMS: %s", format_params)
+        logger.info("PARAMS: %s", format_params)
 
         if body_params is None:
             body_params = {}
@@ -89,7 +90,8 @@ class ApiRequestManager:
             body = sanitize_json_data(body_params.dict())
         except:
             body = sanitize_json_data(body_params)
-        logger.debug("BODY: %s", body)
+        safe_body = {k: v for k, v in body.items() if k.lower() != "password"}
+        logger.info("BODY (safe): %s", safe_body)
         response_data = None
         response = None
         timeout = aiohttp.ClientTimeout(total=self._time_out)
@@ -106,7 +108,7 @@ class ApiRequestManager:
                     data=data,
                     json=json_body,
                 ) as response:
-                    response.raise_for_status()
+                    # Read body first so it's available for error logging
                     try:
                         response_data = await response.json()
                     except Exception:
@@ -115,12 +117,13 @@ class ApiRequestManager:
                             response_data = jsonClass.loads(text)
                         except Exception:
                             response_data = text
+                    if not response.ok:
+                        logger.error("make_request: HTTP %s — error body: %s", response.status, response_data)
+                        response_data = {"error": response_data, "status_code": response.status}
+                        return response_data
         except aiohttp.ClientError as e:
             logger.error("make_request: Request failed: %s", e)
             response_data = {"error": str(e)}
-        except aiohttp.ClientResponseError as e:
-            logger.error("make_request: HTTP error: %s", e.message)
-            response_data = e.message
         except Exception as e:
             logger.error("Unexpected error occurred: %s", e)
             response_data = {"error": "Unexpected error occurred", "details": str(e)}
