@@ -135,8 +135,8 @@ async def instantiate_supervisor(available_llms, tenant_id, state: dict = {}):
                 "Supervisor 'supervisor' not found in dynamic configuration"
             )
 
-        supervisor = supervisors_dict["supervisor"]
-        return supervisor.compile()
+        entry = supervisors_dict["supervisor"]
+        return entry["graph"].compile(), entry["recursion_limit"]
 
     except Exception as e:
         logger.error(f"Error creating dynamic supervisor: {e}")
@@ -173,8 +173,8 @@ async def instantiate_supervisor_anonymous(available_llms, tenant_id, state: dic
                 "Supervisor 'supervisor_anon' not found in dynamic configuration"
             )
 
-        supervisor = supervisors_dict["supervisor_anon"]
-        return supervisor.compile()
+        entry = supervisors_dict["supervisor_anon"]
+        return entry["graph"].compile(), entry["recursion_limit"]
 
     except Exception as e:
         logger.error(f"Error creating dynamic anonymous supervisor: {e}")
@@ -215,8 +215,8 @@ async def instantiate_supervisor_by_role(
                 f"Supervisor '{supervisor_key}' not found in dynamic configuration"
             )
 
-        supervisor = supervisors_dict[supervisor_key]
-        return supervisor.compile()
+        entry = supervisors_dict[supervisor_key]
+        return entry["graph"].compile(), entry["recursion_limit"]
 
     except Exception as e:
         logger.error(f"Error creating supervisor for role '{role}': {e}")
@@ -340,6 +340,7 @@ async def create_graph(
     state: dict = {},
     supervisor: CompiledStateGraph = None,
     supervisor_node: str = "supervisor",
+    recursion_limit: int = 25,
 ) -> CompiledStateGraph:
 
     try:

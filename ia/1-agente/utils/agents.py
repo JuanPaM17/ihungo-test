@@ -224,7 +224,7 @@ async def create_dynamic_supervisors_from_config(
                 )
 
                 if supervisor:
-                    dynamic_supervisors[supervisor_name] = supervisor
+                    dynamic_supervisors[supervisor_name] = supervisor  # {"graph": ..., "recursion_limit": N}
                     logger.info(
                         f"Supervisor dinámico '{supervisor_name}' creado exitosamente"
                     )

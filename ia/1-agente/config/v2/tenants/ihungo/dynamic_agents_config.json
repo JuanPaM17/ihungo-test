@@ -59,6 +59,7 @@
             "prompt_path": "supervisor_prompt.md",
             "llm_model": "default",
             "description": "Primary supervisor for admin users",
+            "recursion_limit": 25,
             "agent_names": [
                 "greeting_agent",
                 "actividades_agent",
@@ -74,6 +75,7 @@
             "prompt_path": "supervisor_associate_prompt.md",
             "llm_model": "default",
             "description": "Supervisor for asociado users — restricted to own activities",
+            "recursion_limit": 15,
             "agent_names": [
                 "greeting_agent_associate",
                 "actividades_agent_associate"

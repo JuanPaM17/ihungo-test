@@ -283,9 +283,10 @@ async def create_dynamic_supervisor(
             prompt=prompt,
         )
         
-        logger.info(f"Supervisor dinámico '{supervisor_name}' creado exitosamente con {len(supervisor_agents)} agentes")
-        return supervisor
-        
+        recursion_limit = supervisor_config.get("recursion_limit", 25)
+        logger.info(f"Supervisor dinámico '{supervisor_name}' creado exitosamente con {len(supervisor_agents)} agentes (recursion_limit={recursion_limit})")
+        return {"graph": supervisor, "recursion_limit": recursion_limit}
+
     except Exception as e:
         logger.error(f"Error creando supervisor dinámico '{supervisor_name}': {e}")
-        return None 
+        return None

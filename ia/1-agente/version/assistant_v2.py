@@ -60,25 +60,25 @@ class AssistantV2:
             from graphs.supervisor_evaluator_summarizer import create_graph
 
             if role == "admin":
-                supervisor = await instantiate_supervisor(
+                supervisor, recursion_limit = await instantiate_supervisor(
                     self.available_llms, self.tenant_id, state
                 )
                 supervisor_node = "supervisor"
             else:
-                supervisor = await instantiate_supervisor_by_role(
+                supervisor, recursion_limit = await instantiate_supervisor_by_role(
                     self.available_llms, self.tenant_id, state, role
                 )
                 supervisor_node = f"supervisor_{role}"
 
             main_graph = await create_graph(
-                self.available_llms, self.tenant_id, state, supervisor, supervisor_node
+                self.available_llms, self.tenant_id, state, supervisor, supervisor_node, recursion_limit
             )
             if main_graph is None:
                 raise RuntimeError(
                     "create_graph returned None for tenant "
-                    f"{self.tenant_id} (is_anonymous={is_anonymous})"
+                    f"{self.tenant_id}"
                 )
-            return main_graph
+            return main_graph, recursion_limit
         except Exception as e:
             logger.exception("Error building supervisor graph")
             raise
@@ -96,7 +96,11 @@ class AssistantV2Manager:
         version: str = "v2",
         state: Dict[str, Any] = {},
     ):
-        """Get or create a graph for a specific tenant based on role."""
+        """Get or create a graph for a specific tenant based on role.
+
+        Returns:
+            (graph, recursion_limit)
+        """
         role = state.get("role", "associate")
         cache_key = f"{tenant_id}_{role}"
 
@@ -105,13 +109,13 @@ class AssistantV2Manager:
             await assistant.initialize()
             self.assistants[cache_key] = assistant
             self.cache[cache_key] = await assistant.build_main_graph(state)
-        graph = self.cache[cache_key]
+
+        graph, recursion_limit = self.cache[cache_key]
         if graph is None:
             raise RuntimeError(
-                f"Assistant graph could not be built for tenant={tenant_id} "
-                f"version={version} is_anonymous={is_anonymous}"
+                f"Assistant graph could not be built for tenant={tenant_id} version={version}"
             )
-        return graph
+        return graph, recursion_limit
 
     def get_assistant_for_tenant(self, tenant_id: str, state: Dict[str, Any] = {}):
         """Get the assistant instance for a specific tenant."""
@@ -143,7 +147,7 @@ async def process_query_v2(
     }
 
     # Get the main graph
-    main_graph = await assistant_manager.get_graph_for_tenant(
+    main_graph, recursion_limit = await assistant_manager.get_graph_for_tenant(
         tenant_id, version, user_state
     )
     if main_graph is None:
@@ -152,6 +156,7 @@ async def process_query_v2(
         )
 
     configuration = RunnableConfig(
+        recursion_limit=recursion_limit,
         tags=["conversation"],
         metadata={
             "session_id": thread_id,
@@ -322,7 +327,7 @@ async def stream_query_v2(
     }
 
     try:
-        main_graph = await assistant_manager.get_graph_for_tenant(
+        main_graph, recursion_limit = await assistant_manager.get_graph_for_tenant(
             tenant_id, version, user_state
         )
     except Exception:
@@ -331,6 +336,7 @@ async def stream_query_v2(
         return
 
     configuration = RunnableConfig(
+        recursion_limit=recursion_limit,
         tags=["conversation"],
         metadata={"session_id": thread_id, "tenant_id": tenant_id, "namespace": tenant_id},
         configurable={

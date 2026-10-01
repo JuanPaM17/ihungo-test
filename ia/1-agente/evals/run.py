@@ -314,7 +314,8 @@ async def main(category: Optional[str], case_id: Optional[str]):
     async def get_graph(thread_id: str):
         """Obtiene el grafo cacheado para el tenant (lo construye si no existe)."""
         user_state = {"is_anonymous": False, "user_name": "eval_user"}
-        return await assistant_manager.get_graph_for_tenant(TENANT_ID, "v2", user_state)
+        graph, _ = await assistant_manager.get_graph_for_tenant(TENANT_ID, "v2", user_state)
+        return graph
 
     results = []
     t_start = time.monotonic()
