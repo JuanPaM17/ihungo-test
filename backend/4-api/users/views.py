@@ -41,9 +41,18 @@ class AsociadoViewSet(
         identificacion = params.get("identificacion")
 
         if nombre:
-            qs = qs.filter(
-                Q(user__first_name__icontains=nombre) | Q(user__last_name__icontains=nombre)
-            )
+            partes = nombre.split()
+            if len(partes) >= 2:
+                qs = qs.filter(
+                    Q(user__first_name__icontains=partes[0], user__last_name__icontains=partes[1])
+                    | Q(user__first_name__icontains=partes[1], user__last_name__icontains=partes[0])
+                    | Q(user__first_name__icontains=nombre)
+                    | Q(user__last_name__icontains=nombre)
+                )
+            else:
+                qs = qs.filter(
+                    Q(user__first_name__icontains=nombre) | Q(user__last_name__icontains=nombre)
+                )
         if email:
             qs = qs.filter(user__email__icontains=email)
         if ciudad:
